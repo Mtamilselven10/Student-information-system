@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit Student Profile</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --ink:#10213d;
+        --navy:#133c7a;
+        --paper:#f6f9ff;
+        --panel:#ffffff;
+        --border:#d4e2ff;
+    }
+    body {
+        font-family:'Poppins',sans-serif;
+        color:var(--ink);
+        background:
+            radial-gradient(circle at 15% 0%, #dff2ff 0%, transparent 32%),
+            radial-gradient(circle at 90% 12%, #ffe9d8 0%, transparent 30%),
+            linear-gradient(180deg, #edf4ff 0%, var(--paper) 52%, #eef7ff 100%);
+        min-height:100vh;
+    }
+    .topbar {
+        background: linear-gradient(90deg, #0f2f64, var(--navy), #11528d);
+        box-shadow: 0 8px 30px rgba(15, 47, 100, 0.28);
+    }
+    .panel {
+        border:1px solid var(--border);
+        border-radius:16px;
+        background:var(--panel);
+        box-shadow: 0 14px 32px rgba(17, 59, 109, 0.08);
+    }
+    .panel-head {
+        border-bottom:1px solid var(--border);
+        padding:14px 18px;
+        font-weight:600;
+        background:linear-gradient(90deg,#edf5ff,#f2fbff);
+        border-radius:16px 16px 0 0;
+    }
+    .panel-body { padding:18px; }
+    .form-control, .form-select, textarea { border-radius:10px; }
+    .chip {
+        background:#e8f2ff;
+        border:1px solid #c6dcff;
+        border-radius:999px;
+        padding:4px 10px;
+        font-size:12px;
+    }
+</style>
+</head>
+<body>
+
+<nav class="navbar topbar navbar-dark">
+    <div class="container">
+        <span class="navbar-brand mb-0 h1">Student Edit Center</span>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-light btn-sm">Dashboard</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-4 py-md-5">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-info">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="panel mb-3">
+        <div class="panel-head d-flex justify-content-between align-items-center">
+            <span>{% if is_setup_mode %}Complete Your Profile{% else %}Update Your Profile{% endif %}</span>
+            <span class="chip">Profile + Results + Marks + Attendance</span>
+        </div>
+        <div class="panel-body">
+            {% if is_setup_mode %}
+            <div class="alert alert-primary">
+                First time login detected. Fill details and save.
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('student_profile', setup=1 if is_setup_mode else None) }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Register Number</label>
+                        <input type="text" name="register_number" class="form-control" value="{{ student.register_number or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Batch</label>
+                        <input type="text" name="batch" class="form-control" value="{{ student.batch or '' }}" placeholder="2023-2027" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Course</label>
+                        <input type="text" name="course" class="form-control" value="{{ student.course or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Branch</label>
+                        <input type="text" name="branch" class="form-control" value="{{ student.branch or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Gender</label>
+                        <select name="gender" class="form-select" required>
+                            <option value="" {% if not student.gender %}selected{% endif %}>Select</option>
+                            <option value="Male" {% if student.gender == "Male" %}selected{% endif %}>Male</option>
+                            <option value="Female" {% if student.gender == "Female" %}selected{% endif %}>Female</option>
+                            <option value="Other" {% if student.gender == "Other" %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="text" name="dob" class="form-control" value="{{ student.dob or '' }}" placeholder="DD-MM-YYYY" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Hostel</label>
+                        <select name="hostel" class="form-select">
+                            <option value="" {% if not student.hostel %}selected{% endif %}>Select</option>
+                            <option value="Yes" {% if student.hostel == "Yes" %}selected{% endif %}>Yes</option>
+                            <option value="No" {% if student.hostel == "No" %}selected{% endif %}>No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Bus</label>
+                        <select name="bus" class="form-select">
+                            <option value="" {% if not student.bus %}selected{% endif %}>Select</option>
+                            <option value="Yes" {% if student.bus == "Yes" %}selected{% endif %}>Yes</option>
+                            <option value="No" {% if student.bus == "No" %}selected{% endif %}>No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Admission Quota</label>
+                        <input type="text" name="admission_quota" class="form-control" value="{{ student.admission_quota or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">First Graduate</label>
+                        <select name="first_graduate" class="form-select">
+                            <option value="" {% if not student.first_graduate %}selected{% endif %}>Select</option>
+                            <option value="Yes" {% if student.first_graduate == "Yes" %}selected{% endif %}>Yes</option>
+                            <option value="No" {% if student.first_graduate == "No" %}selected{% endif %}>No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Personal Email</label>
+                        <input type="email" name="personal_email" class="form-control" value="{{ student.personal_email or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">College Email</label>
+                        <input type="email" name="college_email" class="form-control" value="{{ student.college_email or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mobile</label>
+                        <input type="text" name="mobile" class="form-control" value="{{ student.mobile or '' }}" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Address</label>
+                        <textarea name="address" rows="3" class="form-control" required>{{ student.address or '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="panel mb-3">
+        <div class="panel-head">Edit Results</div>
+        <div class="panel-body">
+            {% if results %}
+                {% for item in results %}
+                <form method="POST" action="{{ url_for('update_result', result_id=item.id) }}" class="row g-2 mb-3">
+                    <div class="col-md-1"><input type="text" name="semester" class="form-control form-control-sm" value="{{ item.semester or '' }}" required></div>
+                    <div class="col-md-2"><input type="text" name="subject_code" class="form-control form-control-sm" value="{{ item.subject_code or '' }}" required></div>
+                    <div class="col-md-3"><input type="text" name="subject_name" class="form-control form-control-sm" value="{{ item.subject_name or '' }}" required></div>
+                    <div class="col-md-1"><input type="text" name="grade" class="form-control form-control-sm" value="{{ item.grade or '' }}" required></div>
+                    <div class="col-md-2"><input type="text" name="result_status" class="form-control form-control-sm" value="{{ item.result_status or '' }}" required></div>
+                    <div class="col-md-2"><input type="text" name="month_year" class="form-control form-control-sm" value="{{ item.month_year or '' }}" required></div>
+                    <div class="col-md-1 d-grid"><button class="btn btn-success btn-sm" type="submit">Update</button></div>
+                </form>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-0">No results available. Add results from Results page.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="panel h-100">
+                <div class="panel-head">Edit Marks</div>
+                <div class="panel-body">
+                    {% if marks %}
+                        {% for item in marks %}
+                        <form method="POST" action="{{ url_for('update_marks', marks_id=item.id) }}" class="row g-2 mb-3">
+                            <div class="col-7"><input type="text" name="subject" class="form-control form-control-sm" value="{{ item.subject or '' }}" required></div>
+                            <div class="col-3"><input type="number" name="marks" class="form-control form-control-sm" value="{{ item.marks }}" required></div>
+                            <div class="col-2 d-grid"><button class="btn btn-success btn-sm" type="submit">Update</button></div>
+                        </form>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">No marks available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel h-100">
+                <div class="panel-head">Edit Attendance</div>
+                <div class="panel-body">
+                    {% if attendance %}
+                        {% for item in attendance %}
+                        <form method="POST" action="{{ url_for('update_attendance', attendance_id=item.id) }}" class="row g-2 mb-3">
+                            <div class="col-7"><input type="text" name="subject" class="form-control form-control-sm" value="{{ item.subject or '' }}" required></div>
+                            <div class="col-3"><input type="number" step="0.01" min="0" max="100" name="attendance_percentage" class="form-control form-control-sm" value="{{ item.attendance_percentage }}" required></div>
+                            <div class="col-2 d-grid"><button class="btn btn-success btn-sm" type="submit">Update</button></div>
+                        </form>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">No attendance available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

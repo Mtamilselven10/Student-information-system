@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Profile</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --ink:#10213d;
+        --navy:#133c7a;
+        --paper:#f6f9ff;
+        --panel:#ffffff;
+        --border:#d4e2ff;
+    }
+    body {
+        font-family:'Poppins',sans-serif;
+        color:var(--ink);
+        background:
+            radial-gradient(circle at 15% 0%, #dff2ff 0%, transparent 32%),
+            radial-gradient(circle at 90% 12%, #ffe9d8 0%, transparent 30%),
+            linear-gradient(180deg, #edf4ff 0%, var(--paper) 52%, #eef7ff 100%);
+        min-height:100vh;
+    }
+    .topbar {
+        background: linear-gradient(90deg, #0f2f64, var(--navy), #11528d);
+        box-shadow: 0 8px 30px rgba(15, 47, 100, 0.28);
+    }
+    .panel {
+        border:1px solid var(--border);
+        border-radius:16px;
+        background:var(--panel);
+        box-shadow: 0 14px 32px rgba(17, 59, 109, 0.08);
+    }
+    .menu-link {
+        display:block;
+        padding:11px 13px;
+        border-radius:11px;
+        text-decoration:none;
+        color:#123257;
+        background:linear-gradient(180deg,#eef5ff,#e8f0ff);
+        border:1px solid #c5d7f7;
+        margin-bottom:10px;
+        transition:all .18s ease;
+    }
+    .menu-link:hover { transform:translateX(2px); border-color:#9ac0ff; }
+    .menu-link.active {
+        background:linear-gradient(90deg,#d8f3ff,#d8e8ff);
+        border-color:#94c6ff;
+        font-weight:600;
+    }
+</style>
+</head>
+<body>
+<nav class="navbar topbar navbar-dark">
+    <div class="container">
+        <span class="navbar-brand mb-0 h1">Student Profile</span>
+        <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
+    </div>
+</nav>
+
+<main class="container py-4">
+    <div class="row g-3">
+        <div class="col-lg-3">
+            <div class="panel p-3">
+                <h6 class="mb-3">Menu</h6>
+                <a href="{{ url_for('student_profile_view') }}" class="menu-link {% if current_page=='profile' %}active{% endif %}">Student Profile</a>
+                <a href="{{ url_for('student_results') }}" class="menu-link {% if current_page=='results' %}active{% endif %}">Results</a>
+                <a href="{{ url_for('student_attachment') }}" class="menu-link {% if current_page=='attachment' %}active{% endif %}">Attachment</a>
+                <a href="{{ url_for('student_profile') }}" class="menu-link">Edit</a>
+                <a href="{{ url_for('student_dashboard') }}" class="menu-link">Dashboard</a>
+            </div>
+        </div>
+        <div class="col-lg-9">
+            <div class="panel p-4">
+                <h5 class="mb-3">Student Details</h5>
+                <div class="row">
+                    <div class="col-md-6"><p><strong>Register Number:</strong> {{ student.register_number or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Batch:</strong> {{ student.batch or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Course:</strong> {{ student.course or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Branch:</strong> {{ student.branch or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Gender:</strong> {{ student.gender or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>DOB:</strong> {{ student.dob or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Hostel:</strong> {{ student.hostel or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Bus:</strong> {{ student.bus or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Admission Quota:</strong> {{ student.admission_quota or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>First Graduate:</strong> {{ student.first_graduate or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Personal Email:</strong> {{ student.personal_email or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>College Email:</strong> {{ student.college_email or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Mobile:</strong> {{ student.mobile or '-' }}</p></div>
+                    <div class="col-12"><p class="mb-0"><strong>Address:</strong> {{ student.address or '-' }}</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

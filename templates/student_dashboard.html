@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --ink:#10213d;
+        --navy:#133c7a;
+        --cyan:#0ea5e9;
+        --mint:#10b981;
+        --peach:#f97316;
+        --paper:#f6f9ff;
+        --panel:#ffffff;
+        --border:#d4e2ff;
+    }
+    body {
+        font-family:'Poppins',sans-serif;
+        color:var(--ink);
+        background:
+            radial-gradient(circle at 15% 0%, #dff2ff 0%, transparent 32%),
+            radial-gradient(circle at 90% 12%, #ffe9d8 0%, transparent 30%),
+            linear-gradient(180deg, #edf4ff 0%, var(--paper) 52%, #eef7ff 100%);
+        min-height:100vh;
+    }
+    .topbar {
+        background: linear-gradient(90deg, #0f2f64, var(--navy), #11528d);
+        box-shadow: 0 8px 30px rgba(15, 47, 100, 0.28);
+    }
+    .topbar .container{
+        position:relative;
+        min-height:58px;
+    }
+    .dashboard-title{
+        position:absolute;
+        left:50%;
+        transform:translateX(-50%);
+        margin:0;
+        font-weight:800 !important;
+        font-size:1.65rem;
+        letter-spacing:.2px;
+        white-space:nowrap;
+    }
+    .rvce-left{
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        line-height:1.05;
+    }
+    .rvce-main{
+        font-size:clamp(30px,4.1vw,58px);
+        font-weight:800;
+        letter-spacing:3px;
+        margin:0;
+    }
+    .rvce-sub{
+        font-size:clamp(10px,1.05vw,22px);
+        font-weight:700;
+        margin:0;
+        text-transform:uppercase;
+    }
+    .panel {
+        border:1px solid var(--border);
+        border-radius:16px;
+        background:var(--panel);
+        box-shadow: 0 14px 32px rgba(17, 59, 109, 0.08);
+    }
+    .menu-link {
+        display:block;
+        padding:11px 13px;
+        border-radius:11px;
+        text-decoration:none;
+        color:#123257;
+        background:linear-gradient(180deg,#eef5ff,#e8f0ff);
+        border:1px solid #c5d7f7;
+        margin-bottom:10px;
+        transition:all .18s ease;
+    }
+    .menu-link:hover { transform:translateX(2px); border-color:#9ac0ff; }
+    .menu-link.active {
+        background:linear-gradient(90deg,#d8f3ff,#d8e8ff);
+        border-color:#94c6ff;
+        font-weight:600;
+    }
+    .btn-edit-now {
+        background:linear-gradient(90deg, var(--cyan), var(--mint));
+        color:#fff;
+        border:none;
+    }
+</style>
+</head>
+<body>
+<nav class="navbar topbar navbar-dark">
+    <div class="container">
+        <div class="rvce-left text-white">
+            <p class="rvce-main">RVCE</p>
+            <p class="rvce-sub">Renganayagi Varatharaj College of Engineering<br>Salvarpatti,Sivakasi,Viruthunagar District</p>
+        </div>
+        <span class="navbar-brand mb-0 h1 dashboard-title">Student Dashboard</span>
+        <div class="d-flex gap-2 ms-auto">
+            <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-4">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-info">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row g-3">
+        <div class="col-lg-3">
+            <div class="panel p-3">
+                <h6 class="mb-3">Menu</h6>
+                <a href="{{ url_for('student_profile_view') }}" class="menu-link {% if current_page=='profile' %}active{% endif %}">Student Profile</a>
+                <a href="{{ url_for('student_results') }}" class="menu-link {% if current_page=='results' %}active{% endif %}">Results</a>
+                <a href="{{ url_for('student_attachment') }}" class="menu-link {% if current_page=='attachment' %}active{% endif %}">Attachment</a>
+                <a href="{{ url_for('student_profile') }}" class="menu-link">Edit</a>
+            </div>
+        </div>
+        <div class="col-lg-9">
+            <div class="panel p-4">
+                <h5 class="mb-3">Welcome</h5>
+                <p class="mb-2"><strong>Name:</strong> {{ session.get('username') or '-' }}</p>
+                <p class="mb-2"><strong>Register Number:</strong> {{ student.register_number or '-' }}</p>
+                <p class="mb-3 text-muted">Select a menu item to open that page.</p>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ url_for('student_profile') }}" class="btn btn-edit-now btn-sm">Add / Update Details</a>
+                    <a href="{{ url_for('student_results') }}" class="btn btn-outline-primary btn-sm">Open Results</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

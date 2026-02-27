@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --ink:#132946;
+            --navy:#163f7a;
+            --cyan:#0ea5e9;
+            --mint:#10b981;
+            --panel:#ffffff;
+            --border:#d4e2ff;
+        }
+        body{
+            font-family:'Poppins',sans-serif;
+            color:var(--ink);
+            background:
+                radial-gradient(circle at 12% 0%, #dff3ff 0%, transparent 34%),
+                radial-gradient(circle at 90% 8%, #ffe8d8 0%, transparent 32%),
+                linear-gradient(180deg,#edf5ff 0%,#f7fbff 100%);
+            min-height:100vh;
+        }
+        .topbar{
+            background:linear-gradient(90deg,#0d2f63,var(--navy),#14528e);
+            box-shadow:0 8px 30px rgba(15,47,100,.28);
+        }
+        .topbar .container{
+            position:relative;
+            min-height:58px;
+        }
+        .dashboard-title{
+            position:absolute;
+            left:50%;
+            transform:translateX(-50%);
+            margin:0;
+            font-weight:800 !important;
+            font-size:1.65rem;
+            letter-spacing:.2px;
+            white-space:nowrap;
+        }
+        .rvce-left{
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            line-height:1.05;
+        }
+        .rvce-main{
+            font-size:clamp(30px,4.1vw,58px);
+            font-weight:800;
+            letter-spacing:3px;
+            margin:0;
+        }
+        .rvce-sub{
+            font-size:clamp(10px,1.05vw,22px);
+            font-weight:700;
+            margin:0;
+            text-transform:uppercase;
+        }
+        .panel{
+            background:var(--panel);
+            border:1px solid var(--border);
+            border-radius:16px;
+            box-shadow:0 14px 32px rgba(17,59,109,.08);
+        }
+        .table th{
+            background:#eaf2ff;
+        }
+        .badge-soft{
+            background:linear-gradient(90deg,#d6f6ff,#ddf3e9);
+            color:#0e426f;
+            border:1px solid #b6e3ff;
+            font-weight:600;
+        }
+        .passport-photo{
+            width:120px;
+            height:160px;
+            object-fit:cover;
+            border-radius:10px;
+            border:2px solid #b9d7ff;
+            background:#f2f7ff;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar topbar navbar-dark">
+        <div class="container">
+            <div class="rvce-left text-white">
+                <p class="rvce-main">RVCE</p>
+                <p class="rvce-sub">Renganayagi Varatharaj College of Engineering<br>Salvarpatti,Sivakasi,Viruthunagar District</p>
+            </div>
+            <span class="navbar-brand mb-0 h1 dashboard-title">Staff Dashboard</span>
+            <div class="d-flex gap-2 align-items-center ms-auto">
+                <span class="badge rounded-pill badge-soft">Logged in: {{ staff_email }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container py-4">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-info">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="panel p-3 h-100">
+                    <div class="fw-semibold mb-2">Staff Photo (Passport Size)</div>
+                    {% if staff_profile.photo %}
+                        <img src="{{ url_for('static', filename=staff_profile.photo) }}" alt="Staff Photo" class="passport-photo mb-2">
+                    {% else %}
+                        <div class="passport-photo d-flex align-items-center justify-content-center text-muted mb-2">No Photo</div>
+                    {% endif %}
+                    <form method="POST" action="{{ url_for('staff_upload_photo') }}" enctype="multipart/form-data" class="mt-2">
+                        <input type="file" name="photo_file" class="form-control form-control-sm mb-2" accept=".png,.jpg,.jpeg,.gif,.webp" required>
+                        <button class="btn btn-primary btn-sm w-100" type="submit">Upload Photo</button>
+                    </form>
+                    {% if staff_profile.photo %}
+                    <form method="POST" action="{{ url_for('staff_remove_photo') }}" class="mt-2">
+                        <button class="btn btn-outline-danger btn-sm w-100" type="submit" onclick="return confirm('Remove staff photo?')">Remove Photo</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="panel p-3">
+                    <div class="text-muted small">Total Students</div>
+                    <div class="h3 mb-0">{{ students|length }}</div>
+                    <a href="{{ url_for('register') }}" class="btn btn-danger-subtle btn-sm w-100 mt-2 border border-danger-subtle">Add Student</a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="panel p-3 h-100">
+                    <div class="fw-semibold mb-1">Staff can do</div>
+                    <div class="small text-muted">View profile, add result, add marks, add attendance, remove student.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel p-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h5 class="mb-0">Student List</h5>
+                <form method="GET" action="{{ url_for('staff_dashboard') }}" class="d-flex gap-2">
+                    <input
+                        type="text"
+                        name="register_number"
+                        class="form-control form-control-sm"
+                        placeholder="Search Register Number"
+                        value="{{ register_query or '' }}"
+                    >
+                    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                    {% if register_query %}
+                    <a href="{{ url_for('staff_dashboard') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                    {% endif %}
+                </form>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Register Number</th>
+                            <th>Course</th>
+                            <th>Branch</th>
+                            <th>Batch</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ student.register_number or '-' }}</td>
+                            <td>{{ student.course or '-' }}</td>
+                            <td>{{ student.branch or '-' }}</td>
+                            <td>{{ student.batch or '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('staff_student_detail', student_id=student.id) }}" class="btn btn-primary btn-sm">Open</a>
+                                <form method="POST" action="{{ url_for('staff_delete_student', student_id=student.id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this student?')">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">No students found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
+

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Staff</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --ink:#132946;
+            --navy:#163f7a;
+            --panel:#ffffff;
+            --border:#d4e2ff;
+        }
+        body{
+            font-family:'Poppins',sans-serif;
+            color:var(--ink);
+            background:
+                radial-gradient(circle at 8% 0%, #dff3ff 0%, transparent 34%),
+                radial-gradient(circle at 90% 10%, #ffe8d8 0%, transparent 32%),
+                linear-gradient(180deg,#edf5ff 0%,#f7fbff 100%);
+            min-height:100vh;
+        }
+        .topbar{
+            background:linear-gradient(90deg,#0d2f63,var(--navy),#14528e);
+            box-shadow:0 8px 30px rgba(15,47,100,.28);
+        }
+        .panel{
+            background:var(--panel);
+            border:1px solid var(--border);
+            border-radius:16px;
+            box-shadow:0 14px 32px rgba(17,59,109,.08);
+        }
+        .table th{background:#eaf2ff;}
+    </style>
+</head>
+<body>
+<nav class="navbar topbar navbar-dark">
+    <div class="container">
+        <span class="navbar-brand">Admin - Staff</span>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light btn-sm">Dashboard</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-4">
+    <div class="panel p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h5 class="mb-0">Staff Management</h5>
+            <form method="GET" action="{{ url_for('admin_staff') }}" class="d-flex gap-2">
+                <input type="text" name="email" class="form-control form-control-sm" placeholder="Search Email" value="{{ email_query or '' }}">
+                <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                {% if email_query %}
+                <a href="{{ url_for('admin_staff') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th>#</th><th>Staff ID</th><th>Email</th><th>Department</th><th>Designation</th><th>Contact</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    {% for s in staff_members %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ s.staff_id or '-' }}</td>
+                        <td>{{ s.user.email if s.user else '-' }}</td>
+                        <td>{{ s.department or '-' }}</td>
+                        <td>{{ s.designation or '-' }}</td>
+                        <td>{{ s.contact or '-' }}</td>
+                        <td>
+                            {% if s.user %}
+                            <form method="POST" action="{{ url_for('delete_user', user_id=s.user.user_id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this staff user?')">Delete User</button>
+                            </form>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted">No staff records found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>

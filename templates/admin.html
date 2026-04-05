@@ -5,30 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root{
-            --ink:#132946;
-            --navy:#163f7a;
+            --ink:#112744;
+            --navy:#0e2d62;
             --panel:#ffffff;
-            --border:#d4e2ff;
+            --line:#c8daf8;
+            --menu-bg:#f5f9ff;
+            --blue:#2563eb;
+            --teal:#14b8a6;
+            --violet:#8b5cf6;
+            --gold:#f59e0b;
+            --rose:#f43f5e;
         }
         body{
             font-family:'Poppins',sans-serif;
             color:var(--ink);
             background:
-                radial-gradient(circle at 8% 0%, #dff3ff 0%, transparent 34%),
-                radial-gradient(circle at 90% 10%, #ffe8d8 0%, transparent 32%),
-                linear-gradient(180deg,#edf5ff 0%,#f7fbff 100%);
+                radial-gradient(circle at 8% -5%, rgba(20,184,166,.24) 0%, transparent 28%),
+                radial-gradient(circle at 95% 10%, rgba(139,92,246,.16) 0%, transparent 26%),
+                linear-gradient(180deg,#eaf4ff 0%,#f8fbff 100%);
             min-height:100vh;
         }
         .topbar{
-            background:linear-gradient(90deg,#0d2f63,var(--navy),#14528e);
-            box-shadow:0 8px 30px rgba(15,47,100,.28);
+            background:linear-gradient(100deg,#0d2f63,var(--navy),#1f6feb);
+            box-shadow:0 12px 28px rgba(13,47,99,.28);
         }
         .topbar .container{
             position:relative;
-            min-height:58px;
+            min-height:72px;
         }
         .dashboard-title{
             position:absolute;
@@ -58,26 +65,176 @@
             margin:0;
             text-transform:uppercase;
         }
-        .panel{
-            background:var(--panel);
-            border:1px solid var(--border);
-            border-radius:16px;
-            box-shadow:0 14px 32px rgba(17,59,109,.08);
-        }
-        .metric{
-            border-radius:14px;
-            padding:16px;
-            background:linear-gradient(145deg,#f4f8ff,#ffffff);
-            border:1px solid var(--border);
-            height:100%;
-        }
-        .metric .v{font-size:28px;font-weight:700;}
-        .table th{background:#eaf2ff;}
         .badge-soft{
-            background:linear-gradient(90deg,#d6f6ff,#ddf3e9);
+            background:linear-gradient(90deg,#d9f8ff,#dff7ea);
             color:#0e426f;
             border:1px solid #b6e3ff;
             font-weight:600;
+        }
+        .admin-shell{
+            display:grid;
+            grid-template-columns:290px 1fr;
+            gap:16px;
+            align-items:start;
+        }
+        .side-menu{
+            position:sticky;
+            top:16px;
+            background:var(--menu-bg);
+            border:1px solid var(--line);
+            border-radius:16px;
+            box-shadow:0 12px 28px rgba(16,56,108,.08);
+            overflow:hidden;
+        }
+        .side-head{
+            padding:14px 14px 10px;
+            font-weight:700;
+            color:#0f3260;
+            border-bottom:1px solid #dde8ff;
+            background:linear-gradient(140deg,#eef5ff,#f8fbff);
+        }
+        .menu-btn{
+            width:100%;
+            border:none;
+            background:transparent;
+            text-align:left;
+            padding:10px 12px;
+            border-radius:10px;
+            color:#12345f;
+            font-weight:600;
+            display:flex;
+            align-items:center;
+            gap:10px;
+            transition:background .2s ease, transform .2s ease, box-shadow .2s ease;
+        }
+        .menu-btn:hover,
+        .menu-btn.active{
+            background:linear-gradient(90deg,#e6f0ff,#ebf7ff);
+            transform:translateX(2px);
+            box-shadow:0 8px 18px rgba(37,99,235,.13);
+        }
+        .menu-logo{
+            width:24px;
+            height:24px;
+            border-radius:7px;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            color:#fff;
+            font-size:12px;
+            font-weight:700;
+            flex:0 0 24px;
+        }
+        .l-users{background:linear-gradient(135deg,var(--blue),#60a5fa);}
+        .l-action{background:linear-gradient(135deg,var(--teal),#2dd4bf);}
+        .l-add{background:linear-gradient(135deg,var(--gold),#fbbf24);}
+        .l-members{background:linear-gradient(135deg,var(--violet),#a78bfa);}
+        .l-recent{background:linear-gradient(135deg,var(--rose),#fb7185);}
+        .sub-menu{
+            display:none;
+            margin-left:34px;
+            padding-bottom:8px;
+        }
+        .sub-menu.open{display:block;}
+        .sub-link{
+            display:block;
+            padding:6px 4px;
+            color:#24528a;
+            font-size:13px;
+            text-decoration:none;
+        }
+        .sub-link:hover{color:#0e5de6;}
+        .main-panel{
+            background:var(--panel);
+            border:1px solid var(--line);
+            border-radius:16px;
+            box-shadow:0 12px 28px rgba(16,56,108,.08);
+            padding:16px;
+            min-height:640px;
+        }
+        .welcome{
+            border:1px solid var(--line);
+            border-radius:14px;
+            background:linear-gradient(140deg,#f7fbff,#eef5ff);
+            padding:14px;
+            margin-bottom:14px;
+            box-shadow:0 10px 22px rgba(37,99,235,.1);
+        }
+        .welcome h5{
+            margin:0;
+            font-size:1.25rem;
+            font-weight:700;
+            color:#0f346a;
+        }
+        .welcome p{
+            margin:.25rem 0 0;
+            color:#3b5e8c;
+        }
+        .section-card{
+            border:1px solid var(--line);
+            border-radius:14px;
+            background:#fff;
+            padding:14px;
+            box-shadow:0 10px 22px rgba(16,56,108,.07);
+            opacity:0;
+            transform:translateY(8px);
+            animation:fadeUp .35s ease forwards;
+        }
+        .section-card h6{
+            margin-bottom:12px;
+            font-size:1.2rem;
+            font-weight:700;
+            color:#113968;
+        }
+        .metric{
+            border-radius:12px;
+            padding:16px;
+            background:linear-gradient(140deg,#f3f8ff,#ffffff);
+            border:1px solid var(--line);
+            box-shadow:0 8px 20px rgba(37,99,235,.08);
+            height:100%;
+        }
+        .metric .v{
+            font-size:34px;
+            font-weight:700;
+            line-height:1;
+            margin-top:8px;
+            color:#113968;
+        }
+        .table th{
+            background:linear-gradient(90deg,#e9f2ff,#edf6ff);
+            color:#113968;
+            font-weight:700;
+        }
+        .table td{vertical-align:middle;}
+        .btn{
+            border-radius:10px;
+            font-weight:600;
+            transition:transform .18s ease, box-shadow .18s ease;
+        }
+        .btn:hover{
+            transform:translateY(-1px);
+            box-shadow:0 8px 18px rgba(37,99,235,.18);
+        }
+        .section-wrap{display:none;}
+        .section-wrap.active{display:block;}
+        @keyframes fadeUp{to{opacity:1;transform:translateY(0);}}
+        @media (max-width:1100px){
+            .admin-shell{grid-template-columns:1fr;}
+            .side-menu{position:static;}
+        }
+        @media (max-width:992px){
+            .dashboard-title{
+                position:static;
+                transform:none;
+                margin-left:8px;
+            }
+            .topbar .container{
+                min-height:auto;
+                padding-top:10px;
+                padding-bottom:10px;
+                flex-wrap:wrap;
+            }
         }
     </style>
 </head>
@@ -105,90 +262,154 @@
           {% endif %}
         {% endwith %}
 
-        <div class="row g-3 mb-3">
-            <div class="col-md-4"><div class="metric"><div class="small text-muted">Users</div><div class="v">{{ total_users }}</div></div></div>
-            <div class="col-md-4"><div class="metric"><div class="small text-muted">Students</div><div class="v">{{ total_students }}</div></div></div>
-            <div class="col-md-4"><div class="metric"><div class="small text-muted">Staff</div><div class="v">{{ total_staff }}</div></div></div>
-        </div>
+        <div class="admin-shell">
+            <aside class="side-menu">
+                <div class="side-head">Admin Menu</div>
+                <div class="p-2">
+                    <button type="button" class="menu-btn active" data-target="sec-users">
+                        <span class="menu-logo l-users">U</span> User
+                    </button>
+                    <button type="button" class="menu-btn" id="adminActionBtn" data-target="sec-actions">
+                        <span class="menu-logo l-action">A</span> Admin Action
+                    </button>
+                    <div class="sub-menu" id="adminActionSub">
+                        <a href="{{ url_for('admin_students') }}" class="sub-link">Manage Students</a>
+                        <a href="{{ url_for('admin_staff') }}" class="sub-link">Manage Staff</a>
+                    </div>
+                    <button type="button" class="menu-btn" data-target="sec-add-admin">
+                        <span class="menu-logo l-add">+</span> Add Admin
+                    </button>
+                    <button type="button" class="menu-btn" data-target="sec-admin-members">
+                        <span class="menu-logo l-members">AM</span> Admin Members
+                    </button>
+                    <button type="button" class="menu-btn" data-target="sec-recent-users">
+                        <span class="menu-logo l-recent">RU</span> Recent Users
+                    </button>
+                </div>
+            </aside>
 
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <div class="panel p-3">
-                    <h6 class="mb-3">Admin Actions</h6>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <a href="{{ url_for('admin_students') }}" class="btn btn-primary btn-sm">Manage Students</a>
-                        <a href="{{ url_for('admin_staff') }}" class="btn btn-success btn-sm">Manage Staff</a>
+            <section class="main-panel">
+                <div class="welcome">
+                    <h5>Welcome Admin</h5>
+                    <p>Use the left menu to open each section one by one.</p>
+                </div>
+
+                <div class="section-wrap active" id="sec-users">
+                    <div class="section-card">
+                        <h6>User Overview</h6>
+                        <div class="row g-3">
+                            <div class="col-md-4"><div class="metric"><div class="small text-muted">Users</div><div class="v">{{ total_users }}</div></div></div>
+                            <div class="col-md-4"><div class="metric"><div class="small text-muted">Students</div><div class="v">{{ total_students }}</div></div></div>
+                            <div class="col-md-4"><div class="metric"><div class="small text-muted">Staff</div><div class="v">{{ total_staff }}</div></div></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <div class="panel p-3">
-                    <h6 class="mb-2">Add Admin Member</h6>
-                    <form method="POST" action="{{ url_for('admin_add_member') }}" class="row g-2">
-                        <div class="col-md-4"><input type="text" name="username" class="form-control form-control-sm" placeholder="Username" required></div>
-                        <div class="col-md-4"><input type="email" name="email" class="form-control form-control-sm" placeholder="Email" required></div>
-                        <div class="col-md-4"><input type="password" name="password" class="form-control form-control-sm" placeholder="Password" required></div>
-                        <div class="col-12 text-end"><button type="submit" class="btn btn-warning btn-sm">Add Admin</button></div>
-                    </form>
+
+                <div class="section-wrap" id="sec-actions">
+                    <div class="section-card">
+                        <h6>Admin Action</h6>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a href="{{ url_for('admin_students') }}" class="btn btn-primary btn-sm">Manage Students</a>
+                            <a href="{{ url_for('admin_staff') }}" class="btn btn-success btn-sm">Manage Staff</a>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="panel p-3 mb-3">
-            <h6 class="mb-3">Admin Members</h6>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>User ID</th><th>Username</th><th>Email</th><th>Action</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for u in admin_members %}
-                        <tr>
-                            <td>{{ u.user_id }}</td>
-                            <td>{{ u.username }}</td>
-                            <td>{{ u.email }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('admin_remove_member', user_id=u.user_id) }}" class="d-flex gap-2 align-items-center">
-                                    <input type="password" name="password" class="form-control form-control-sm" placeholder="Admin password" required>
-                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Remove this admin member?')">Remove</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="4" class="text-center text-muted">No admin members found</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                <div class="section-wrap" id="sec-add-admin">
+                    <div class="section-card">
+                        <h6>Add Admin</h6>
+                        <form method="POST" action="{{ url_for('admin_add_member') }}" class="row g-2">
+                            <div class="col-md-4"><input type="text" name="username" class="form-control form-control-sm" placeholder="Username" required></div>
+                            <div class="col-md-4"><input type="email" name="email" class="form-control form-control-sm" placeholder="Email" required></div>
+                            <div class="col-md-4"><input type="password" name="password" class="form-control form-control-sm" placeholder="Password" required></div>
+                            <div class="col-12 text-end"><button type="submit" class="btn btn-warning btn-sm">Add Admin</button></div>
+                        </form>
+                    </div>
+                </div>
 
-        <div class="panel p-3">
-            <h6 class="mb-3">Recent Users</h6>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>User ID</th><th>Username</th><th>Email</th><th>Action</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for u in recent_users %}
-                        <tr>
-                            <td>{{ u.user_id }}</td>
-                            <td>{{ u.username }}</td>
-                            <td>{{ u.email }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('delete_user', user_id=u.user_id) }}" class="d-inline">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this user?')">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="4" class="text-center text-muted">No users found</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                <div class="section-wrap" id="sec-admin-members">
+                    <div class="section-card">
+                        <h6>Admin Members</h6>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr><th>User ID</th><th>Username</th><th>Email</th><th>Action</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for u in admin_members %}
+                                    <tr>
+                                        <td>{{ u.user_id }}</td>
+                                        <td>{{ u.username }}</td>
+                                        <td>{{ u.email }}</td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('admin_remove_member', user_id=u.user_id) }}" class="d-flex gap-2 align-items-center">
+                                                <input type="password" name="password" class="form-control form-control-sm" placeholder="Admin password" required>
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Remove this admin member?')">Remove</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center text-muted">No admin members found</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-wrap" id="sec-recent-users">
+                    <div class="section-card">
+                        <h6>Recent Users</h6>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr><th>User ID</th><th>Username</th><th>Email</th><th>Action</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for u in recent_users %}
+                                    <tr>
+                                        <td>{{ u.user_id }}</td>
+                                        <td>{{ u.username }}</td>
+                                        <td>{{ u.email }}</td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('delete_user', user_id=u.user_id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this user?')">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center text-muted">No users found</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
+    <script>
+        (function () {
+            const menuBtns = Array.from(document.querySelectorAll(".menu-btn[data-target]"));
+            const sections = Array.from(document.querySelectorAll(".section-wrap"));
+            const actionBtn = document.getElementById("adminActionBtn");
+            const actionSub = document.getElementById("adminActionSub");
+
+            function openSection(id) {
+                sections.forEach((s) => s.classList.toggle("active", s.id === id));
+                menuBtns.forEach((b) => b.classList.toggle("active", b.dataset.target === id));
+            }
+
+            menuBtns.forEach((btn) => {
+                btn.addEventListener("click", function () {
+                    if (this === actionBtn && actionSub) {
+                        actionSub.classList.toggle("open");
+                    }
+                    openSection(this.dataset.target);
+                });
+            });
+        })();
+    </script>
 </body>
 </html>
 

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Edit Student Profile</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -49,6 +50,53 @@
         padding:4px 10px;
         font-size:12px;
     }
+    .menu-toggle{
+        position:fixed;
+        left:16px;
+        top:90px;
+        z-index:1100;
+        border:none;
+        border-radius:10px;
+        background:linear-gradient(90deg,#0ea5e9,#10b981);
+        color:#fff;
+        font-weight:600;
+        padding:10px 14px;
+        box-shadow:0 8px 20px rgba(16,56,108,.25);
+    }
+    .menu-overlay{
+        position:fixed;
+        inset:0;
+        background:rgba(12,24,44,.35);
+        opacity:0;
+        pointer-events:none;
+        transition:opacity .28s ease;
+        z-index:1050;
+    }
+    .menu-overlay.open{
+        opacity:1;
+        pointer-events:auto;
+    }
+    .side-menu{
+        position:fixed;
+        left:0;
+        top:0;
+        bottom:0;
+        width:min(320px,88vw);
+        z-index:1101;
+        transform:translateX(-105%);
+        transition:transform .32s cubic-bezier(.2,.8,.2,1);
+        padding:82px 16px 16px;
+        overflow:auto;
+    }
+    .side-menu.open{
+        transform:translateX(0);
+    }
+    .menu-icon{
+        width:18px;
+        height:18px;
+        margin-right:8px;
+        vertical-align:middle;
+    }
 </style>
 </head>
 <body>
@@ -62,6 +110,19 @@
         </div>
     </div>
 </nav>
+<button type="button" class="menu-toggle" id="menuToggle">Menu</button>
+<div class="menu-overlay" id="menuOverlay"></div>
+<aside class="side-menu" id="sideMenu">
+    <div class="panel p-3">
+        <h6 class="mb-3">Menu</h6>
+        <a href="{{ url_for('student_profile_view') }}" class="menu-link"><img src="{{ url_for('static', filename='icons/student-profile.svg') }}" alt="" class="menu-icon">Student Profile</a>
+        <a href="{{ url_for('student_results') }}" class="menu-link"><img src="{{ url_for('static', filename='icons/results.svg') }}" alt="" class="menu-icon">Results</a>
+        <a href="{{ url_for('student_attachment') }}" class="menu-link"><img src="{{ url_for('static', filename='icons/attachment.svg') }}" alt="" class="menu-icon">Attachment</a>
+        <a href="{{ url_for('student_profile') }}" class="menu-link active"><img src="{{ url_for('static', filename='icons/edit.svg') }}" alt="" class="menu-icon">Edit</a>
+        <a href="{{ url_for('student_pdf_options') }}" class="menu-link"><img src="{{ url_for('static', filename='icons/download.svg') }}" alt="" class="menu-icon">Download PDF</a>
+        <a href="{{ url_for('student_dashboard') }}" class="menu-link">Dashboard</a>
+    </div>
+</aside>
 
 <main class="container py-4 py-md-5">
     {% with messages = get_flashed_messages() %}
@@ -86,6 +147,10 @@
 
             <form method="POST" action="{{ url_for('student_profile', setup=1 if is_setup_mode else None) }}">
                 <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Name</label>
+                        <input type="text" name="username" class="form-control" value="{{ session.get('username') or '' }}" required>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label">Register Number</label>
                         <input type="text" name="register_number" class="form-control" value="{{ student.register_number or '' }}" required>
@@ -159,6 +224,388 @@
                         <label class="form-label">Address</label>
                         <textarea name="address" rows="3" class="form-control" required>{{ student.address or '' }}</textarea>
                     </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Blood Group</label>
+                        <select name="blood_group" id="blood_group" class="form-select custom-dropdown" data-other-id="blood_group_other">
+                            <option value="">Select</option>
+                            <option value="O+" {% if student.blood_group == "O+" %}selected{% endif %}>O+</option>
+                            <option value="O-" {% if student.blood_group == "O-" %}selected{% endif %}>O-</option>
+                            <option value="A+" {% if student.blood_group == "A+" %}selected{% endif %}>A+</option>
+                            <option value="A-" {% if student.blood_group == "A-" %}selected{% endif %}>A-</option>
+                            <option value="B+" {% if student.blood_group == "B+" %}selected{% endif %}>B+</option>
+                            <option value="B-" {% if student.blood_group == "B-" %}selected{% endif %}>B-</option>
+                            <option value="AB+" {% if student.blood_group == "AB+" %}selected{% endif %}>AB+</option>
+                            <option value="AB-" {% if student.blood_group == "AB-" %}selected{% endif %}>AB-</option>
+                            <option value="Other"
+                                {% if student.blood_group and student.blood_group not in ["O+","O-","A+","A-","B+","B-","AB+","AB-"] %}selected{% endif %}>
+                                Other
+                            </option>
+                        </select>
+                        <input
+                            type="text"
+                            id="blood_group_other"
+                            class="form-control mt-2"
+                            placeholder="Enter blood group"
+                            {% if student.blood_group and student.blood_group not in ["O+","O-","A+","A-","B+","B-","AB+","AB-"] %}
+                                value="{{ student.blood_group }}"
+                            {% endif %}
+                        >
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Nationality</label>
+                        <input type="text" name="nationality" class="form-control" value="{{ student.nationality or '' }}">
+                    </div>
+
+                    <div class="col-12"><h6 class="mt-3 mb-1">Family Details</h6></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Father Name</label>
+                        <input type="text" name="father_name" class="form-control" value="{{ student.father_name or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mother Name</label>
+                        <input type="text" name="mother_name" class="form-control" value="{{ student.mother_name or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Parent Occupation</label>
+                        <input type="text" name="parent_occupation" class="form-control" value="{{ student.parent_occupation or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mobile Number (Parent)</label>
+                        <input type="text" name="parent_mobile" class="form-control" value="{{ student.parent_mobile or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email ID</label>
+                        <input type="email" name="email_id" class="form-control" value="{{ student.email_id or '' }}">
+                    </div>
+
+                    <div class="col-12"><h6 class="mt-3 mb-1">Academic Information</h6></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Semester</label>
+                        <input type="text" name="semester" class="form-control" value="{{ student.semester or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Admission Year</label>
+                        <input type="text" name="admission_year" class="form-control" value="{{ student.admission_year or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Previous School / College</label>
+                        <input type="text" name="previous_institution" class="form-control" value="{{ student.previous_institution or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Internal Marks</label>
+                        <input type="text" name="internal_marks" class="form-control" value="{{ student.internal_marks or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Semester Exam Marks</label>
+                        <input type="text" name="semester_exam_marks" class="form-control" value="{{ student.semester_exam_marks or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">CGPA / GPA</label>
+                        <input type="text" name="cgpa_gpa" class="form-control" value="{{ student.cgpa_gpa or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Arrears / Backlogs</label>
+                        <input type="text" name="arrears_backlogs" class="form-control" value="{{ student.arrears_backlogs or '' }}">
+                    </div>
+
+                    <div class="col-12"><h6 class="mt-3 mb-1">Fee & Scholarship Details</h6></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tuition Fee</label>
+                        <select name="tuition_fee" id="tuition_fee" class="form-select custom-dropdown" data-other-id="tuition_fee_other">
+                            <option value="">Select</option>
+                            <option value="25000" {% if student.tuition_fee == "25000" %}selected{% endif %}>25000</option>
+                            <option value="50000" {% if student.tuition_fee == "50000" %}selected{% endif %}>50000</option>
+                            <option value="75000" {% if student.tuition_fee == "75000" %}selected{% endif %}>75000</option>
+                            <option value="100000" {% if student.tuition_fee == "100000" %}selected{% endif %}>100000</option>
+                            <option value="Other" {% if student.tuition_fee and student.tuition_fee not in ["25000","50000","75000","100000"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="tuition_fee_other" class="form-control mt-2"
+                            {% if student.tuition_fee and student.tuition_fee not in ["25000","50000","75000","100000"] %}value="{{ student.tuition_fee }}"{% endif %}
+                            placeholder="Enter tuition fee">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Bus Fee / Hostel Fee</label>
+                        <select name="bus_hostel_fee" id="bus_hostel_fee" class="form-select custom-dropdown" data-other-id="bus_hostel_fee_other">
+                            <option value="">Select</option>
+                            <option value="5000" {% if student.bus_hostel_fee == "5000" %}selected{% endif %}>5000</option>
+                            <option value="10000" {% if student.bus_hostel_fee == "10000" %}selected{% endif %}>10000</option>
+                            <option value="15000" {% if student.bus_hostel_fee == "15000" %}selected{% endif %}>15000</option>
+                            <option value="20000" {% if student.bus_hostel_fee == "20000" %}selected{% endif %}>20000</option>
+                            <option value="Other" {% if student.bus_hostel_fee and student.bus_hostel_fee not in ["5000","10000","15000","20000"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="bus_hostel_fee_other" class="form-control mt-2"
+                            {% if student.bus_hostel_fee and student.bus_hostel_fee not in ["5000","10000","15000","20000"] %}value="{{ student.bus_hostel_fee }}"{% endif %}
+                            placeholder="Enter fee">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Scholarship Details</label>
+                        <select name="scholarship_details" id="scholarship_details" class="form-select custom-dropdown" data-other-id="scholarship_details_other">
+                            <option value="">Select</option>
+                            <option value="Government Scholarship" {% if student.scholarship_details == "Government Scholarship" %}selected{% endif %}>Government Scholarship</option>
+                            <option value="First Graduate" {% if student.scholarship_details == "First Graduate" %}selected{% endif %}>First Graduate</option>
+                            <option value="Merit Scholarship" {% if student.scholarship_details == "Merit Scholarship" %}selected{% endif %}>Merit Scholarship</option>
+                            <option value="No Scholarship" {% if student.scholarship_details == "No Scholarship" %}selected{% endif %}>No Scholarship</option>
+                            <option value="Other" {% if student.scholarship_details and student.scholarship_details not in ["Government Scholarship","First Graduate","Merit Scholarship","No Scholarship"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="scholarship_details_other" class="form-control mt-2"
+                            {% if student.scholarship_details and student.scholarship_details not in ["Government Scholarship","First Graduate","Merit Scholarship","No Scholarship"] %}value="{{ student.scholarship_details }}"{% endif %}
+                            placeholder="Enter scholarship details">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Scholarship Amount</label>
+                        <select name="scholarship_amount" id="scholarship_amount" class="form-select custom-dropdown" data-other-id="scholarship_amount_other">
+                            <option value="">Select</option>
+                            <option value="5000" {% if student.scholarship_amount == "5000" %}selected{% endif %}>5000</option>
+                            <option value="10000" {% if student.scholarship_amount == "10000" %}selected{% endif %}>10000</option>
+                            <option value="15000" {% if student.scholarship_amount == "15000" %}selected{% endif %}>15000</option>
+                            <option value="20000" {% if student.scholarship_amount == "20000" %}selected{% endif %}>20000</option>
+                            <option value="Other" {% if student.scholarship_amount and student.scholarship_amount not in ["5000","10000","15000","20000"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="scholarship_amount_other" class="form-control mt-2"
+                            {% if student.scholarship_amount and student.scholarship_amount not in ["5000","10000","15000","20000"] %}value="{{ student.scholarship_amount }}"{% endif %}
+                            placeholder="Enter scholarship amount">
+                    </div>
+
+                    <div class="col-12"><h6 class="mt-3 mb-1">Hostel Details</h6></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Hostel Name</label>
+                        <select name="hostel_name" id="hostel_name" class="form-select custom-dropdown" data-other-id="hostel_name_other">
+                            <option value="">Select</option>
+                            <option value="A Block Hostel" {% if student.hostel_name == "A Block Hostel" %}selected{% endif %}>A Block Hostel</option>
+                            <option value="B Block Hostel" {% if student.hostel_name == "B Block Hostel" %}selected{% endif %}>B Block Hostel</option>
+                            <option value="C Block Hostel" {% if student.hostel_name == "C Block Hostel" %}selected{% endif %}>C Block Hostel</option>
+                            <option value="Day Scholar" {% if student.hostel_name == "Day Scholar" %}selected{% endif %}>Day Scholar</option>
+                            <option value="Other" {% if student.hostel_name and student.hostel_name not in ["A Block Hostel","B Block Hostel","C Block Hostel","Day Scholar"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="hostel_name_other" class="form-control mt-2"
+                            {% if student.hostel_name and student.hostel_name not in ["A Block Hostel","B Block Hostel","C Block Hostel","Day Scholar"] %}value="{{ student.hostel_name }}"{% endif %}
+                            placeholder="Enter hostel name">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Room Number</label>
+                        <select name="room_number" id="room_number" class="form-select custom-dropdown" data-other-id="room_number_other">
+                            <option value="">Select</option>
+                            <option value="101" {% if student.room_number == "101" %}selected{% endif %}>101</option>
+                            <option value="102" {% if student.room_number == "102" %}selected{% endif %}>102</option>
+                            <option value="201" {% if student.room_number == "201" %}selected{% endif %}>201</option>
+                            <option value="202" {% if student.room_number == "202" %}selected{% endif %}>202</option>
+                            <option value="Other" {% if student.room_number and student.room_number not in ["101","102","201","202"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="room_number_other" class="form-control mt-2"
+                            {% if student.room_number and student.room_number not in ["101","102","201","202"] %}value="{{ student.room_number }}"{% endif %}
+                            placeholder="Enter room number">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Roommates Count</label>
+                        <select name="roommates_count" id="roommates_count" class="form-select custom-dropdown" data-other-id="roommates_count_other">
+                            <option value="">Select</option>
+                            <option value="1" {% if student.roommates_count == "1" %}selected{% endif %}>1</option>
+                            <option value="2" {% if student.roommates_count == "2" %}selected{% endif %}>2</option>
+                            <option value="3" {% if student.roommates_count == "3" %}selected{% endif %}>3</option>
+                            <option value="4" {% if student.roommates_count == "4" %}selected{% endif %}>4</option>
+                            <option value="Other" {% if student.roommates_count and student.roommates_count not in ["1","2","3","4"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="roommates_count_other" class="form-control mt-2"
+                            {% if student.roommates_count and student.roommates_count not in ["1","2","3","4"] %}value="{{ student.roommates_count }}"{% endif %}
+                            placeholder="Enter roommates count">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Warden Name</label>
+                        <select name="warden_name" id="warden_name" class="form-select custom-dropdown" data-other-id="warden_name_other">
+                            <option value="">Select</option>
+                            <option value="Mr. Kumar" {% if student.warden_name == "Mr. Kumar" %}selected{% endif %}>Mr. Kumar</option>
+                            <option value="Mrs. Priya" {% if student.warden_name == "Mrs. Priya" %}selected{% endif %}>Mrs. Priya</option>
+                            <option value="Mr. Raj" {% if student.warden_name == "Mr. Raj" %}selected{% endif %}>Mr. Raj</option>
+                            <option value="Other" {% if student.warden_name and student.warden_name not in ["Mr. Kumar","Mrs. Priya","Mr. Raj"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="warden_name_other" class="form-control mt-2"
+                            {% if student.warden_name and student.warden_name not in ["Mr. Kumar","Mrs. Priya","Mr. Raj"] %}value="{{ student.warden_name }}"{% endif %}
+                            placeholder="Enter warden name">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Warden Mobile Number</label>
+                        <select name="warden_mobile" id="warden_mobile" class="form-select custom-dropdown" data-other-id="warden_mobile_other">
+                            <option value="">Select</option>
+                            <option value="9000000001" {% if student.warden_mobile == "9000000001" %}selected{% endif %}>9000000001</option>
+                            <option value="9000000002" {% if student.warden_mobile == "9000000002" %}selected{% endif %}>9000000002</option>
+                            <option value="9000000003" {% if student.warden_mobile == "9000000003" %}selected{% endif %}>9000000003</option>
+                            <option value="Other" {% if student.warden_mobile and student.warden_mobile not in ["9000000001","9000000002","9000000003"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="warden_mobile_other" class="form-control mt-2"
+                            {% if student.warden_mobile and student.warden_mobile not in ["9000000001","9000000002","9000000003"] %}value="{{ student.warden_mobile }}"{% endif %}
+                            placeholder="Enter warden mobile number">
+                    </div>
+
+                    <div class="col-12"><h6 class="mt-3 mb-1">Extra-Curricular Activities</h6></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Sports Participation</label>
+                        <select name="sports_participation" id="sports_participation" class="form-select custom-dropdown" data-other-id="sports_participation_other">
+                            <option value="">Select</option>
+                            <option value="Athletics" {% if student.sports_participation == "Athletics" %}selected{% endif %}>Athletics</option>
+                            <option value="Cricket" {% if student.sports_participation == "Cricket" %}selected{% endif %}>Cricket</option>
+                            <option value="Football" {% if student.sports_participation == "Football" %}selected{% endif %}>Football</option>
+                            <option value="No Participation" {% if student.sports_participation == "No Participation" %}selected{% endif %}>No Participation</option>
+                            <option value="Other" {% if student.sports_participation and student.sports_participation not in ["Athletics","Cricket","Football","No Participation"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="sports_participation_other" class="form-control mt-2"
+                            {% if student.sports_participation and student.sports_participation not in ["Athletics","Cricket","Football","No Participation"] %}value="{{ student.sports_participation }}"{% endif %}
+                            placeholder="Enter sports participation">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Club Memberships</label>
+                        <select name="club_memberships" id="club_memberships" class="form-select custom-dropdown" data-other-id="club_memberships_other">
+                            <option value="">Select</option>
+                            <option value="NSS" {% if student.club_memberships == "NSS" %}selected{% endif %}>NSS</option>
+                            <option value="NCC" {% if student.club_memberships == "NCC" %}selected{% endif %}>NCC</option>
+                            <option value="Coding Club" {% if student.club_memberships == "Coding Club" %}selected{% endif %}>Coding Club</option>
+                            <option value="No Membership" {% if student.club_memberships == "No Membership" %}selected{% endif %}>No Membership</option>
+                            <option value="Other" {% if student.club_memberships and student.club_memberships not in ["NSS","NCC","Coding Club","No Membership"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="club_memberships_other" class="form-control mt-2"
+                            {% if student.club_memberships and student.club_memberships not in ["NSS","NCC","Coding Club","No Membership"] %}value="{{ student.club_memberships }}"{% endif %}
+                            placeholder="Enter club memberships">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Achievements / Awards</label>
+                        <select name="achievements_awards" id="achievements_awards" class="form-select custom-dropdown" data-other-id="achievements_awards_other">
+                            <option value="">Select</option>
+                            <option value="District Level Winner" {% if student.achievements_awards == "District Level Winner" %}selected{% endif %}>District Level Winner</option>
+                            <option value="College Level Winner" {% if student.achievements_awards == "College Level Winner" %}selected{% endif %}>College Level Winner</option>
+                            <option value="Participation Certificate" {% if student.achievements_awards == "Participation Certificate" %}selected{% endif %}>Participation Certificate</option>
+                            <option value="No Achievements" {% if student.achievements_awards == "No Achievements" %}selected{% endif %}>No Achievements</option>
+                            <option value="Other" {% if student.achievements_awards and student.achievements_awards not in ["District Level Winner","College Level Winner","Participation Certificate","No Achievements"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="achievements_awards_other" class="form-control mt-2"
+                            {% if student.achievements_awards and student.achievements_awards not in ["District Level Winner","College Level Winner","Participation Certificate","No Achievements"] %}value="{{ student.achievements_awards }}"{% endif %}
+                            placeholder="Enter achievements / awards">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Events Participated</label>
+                        <select name="events_participated" id="events_participated" class="form-select custom-dropdown" data-other-id="events_participated_other">
+                            <option value="">Select</option>
+                            <option value="Symposium" {% if student.events_participated == "Symposium" %}selected{% endif %}>Symposium</option>
+                            <option value="Workshop" {% if student.events_participated == "Workshop" %}selected{% endif %}>Workshop</option>
+                            <option value="Hackathon" {% if student.events_participated == "Hackathon" %}selected{% endif %}>Hackathon</option>
+                            <option value="No Events" {% if student.events_participated == "No Events" %}selected{% endif %}>No Events</option>
+                            <option value="Other" {% if student.events_participated and student.events_participated not in ["Symposium","Workshop","Hackathon","No Events"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="events_participated_other" class="form-control mt-2"
+                            {% if student.events_participated and student.events_participated not in ["Symposium","Workshop","Hackathon","No Events"] %}value="{{ student.events_participated }}"{% endif %}
+                            placeholder="Enter events participated">
+                    </div>
+
+                    <div class="col-12"><h6 class="mt-3 mb-1">Professional / Career Details</h6></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Projects Done</label>
+                        <select name="projects_done" id="projects_done" class="form-select custom-dropdown" data-other-id="projects_done_other">
+                            <option value="">Select</option>
+                            <option value="Mini Project" {% if student.projects_done == "Mini Project" %}selected{% endif %}>Mini Project</option>
+                            <option value="Main Project" {% if student.projects_done == "Main Project" %}selected{% endif %}>Main Project</option>
+                            <option value="Both Mini and Main" {% if student.projects_done == "Both Mini and Main" %}selected{% endif %}>Both Mini and Main</option>
+                            <option value="No Projects" {% if student.projects_done == "No Projects" %}selected{% endif %}>No Projects</option>
+                            <option value="Other" {% if student.projects_done and student.projects_done not in ["Mini Project","Main Project","Both Mini and Main","No Projects"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="projects_done_other" class="form-control mt-2"
+                            {% if student.projects_done and student.projects_done not in ["Mini Project","Main Project","Both Mini and Main","No Projects"] %}value="{{ student.projects_done }}"{% endif %}
+                            placeholder="Enter projects done">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Internships</label>
+                        <select name="internships" id="internships" class="form-select custom-dropdown" data-other-id="internships_other">
+                            <option value="">Select</option>
+                            <option value="Completed" {% if student.internships == "Completed" %}selected{% endif %}>Completed</option>
+                            <option value="In Progress" {% if student.internships == "In Progress" %}selected{% endif %}>In Progress</option>
+                            <option value="Not Yet" {% if student.internships == "Not Yet" %}selected{% endif %}>Not Yet</option>
+                            <option value="Other" {% if student.internships and student.internships not in ["Completed","In Progress","Not Yet"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="internships_other" class="form-control mt-2"
+                            {% if student.internships and student.internships not in ["Completed","In Progress","Not Yet"] %}value="{{ student.internships }}"{% endif %}
+                            placeholder="Enter internships">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Certifications</label>
+                        <select name="certifications" id="certifications" class="form-select custom-dropdown" data-other-id="certifications_other">
+                            <option value="">Select</option>
+                            <option value="NPTEL" {% if student.certifications == "NPTEL" %}selected{% endif %}>NPTEL</option>
+                            <option value="Coursera" {% if student.certifications == "Coursera" %}selected{% endif %}>Coursera</option>
+                            <option value="Udemy" {% if student.certifications == "Udemy" %}selected{% endif %}>Udemy</option>
+                            <option value="No Certifications" {% if student.certifications == "No Certifications" %}selected{% endif %}>No Certifications</option>
+                            <option value="Other" {% if student.certifications and student.certifications not in ["NPTEL","Coursera","Udemy","No Certifications"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="certifications_other" class="form-control mt-2"
+                            {% if student.certifications and student.certifications not in ["NPTEL","Coursera","Udemy","No Certifications"] %}value="{{ student.certifications }}"{% endif %}
+                            placeholder="Enter certifications">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Skills (Python, ML, etc.)</label>
+                        <select name="skills" id="skills" class="form-select custom-dropdown" data-other-id="skills_other">
+                            <option value="">Select</option>
+                            <option value="Python" {% if student.skills == "Python" %}selected{% endif %}>Python</option>
+                            <option value="Machine Learning" {% if student.skills == "Machine Learning" %}selected{% endif %}>Machine Learning</option>
+                            <option value="Web Development" {% if student.skills == "Web Development" %}selected{% endif %}>Web Development</option>
+                            <option value="Data Analysis" {% if student.skills == "Data Analysis" %}selected{% endif %}>Data Analysis</option>
+                            <option value="Other" {% if student.skills and student.skills not in ["Python","Machine Learning","Web Development","Data Analysis"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="skills_other" class="form-control mt-2"
+                            {% if student.skills and student.skills not in ["Python","Machine Learning","Web Development","Data Analysis"] %}value="{{ student.skills }}"{% endif %}
+                            placeholder="Enter skills">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Project Details</label>
+                        <select name="project_details" id="project_details" class="form-select custom-dropdown" data-other-id="project_details_other">
+                            <option value="">Select</option>
+                            <option value="Academic Project" {% if student.project_details == "Academic Project" %}selected{% endif %}>Academic Project</option>
+                            <option value="Real-time Project" {% if student.project_details == "Real-time Project" %}selected{% endif %}>Real-time Project</option>
+                            <option value="Team Project" {% if student.project_details == "Team Project" %}selected{% endif %}>Team Project</option>
+                            <option value="No Project Details" {% if student.project_details == "No Project Details" %}selected{% endif %}>No Project Details</option>
+                            <option value="Other" {% if student.project_details and student.project_details not in ["Academic Project","Real-time Project","Team Project","No Project Details"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="project_details_other" class="form-control mt-2"
+                            {% if student.project_details and student.project_details not in ["Academic Project","Real-time Project","Team Project","No Project Details"] %}value="{{ student.project_details }}"{% endif %}
+                            placeholder="Enter project details">
+                    </div>
+
+                    <div class="col-12"><h6 class="mt-3 mb-1">Disciplinary Records</h6></div>
+                    <div class="col-md-4">
+                        <label class="form-label">Warnings</label>
+                        <select name="warnings" id="warnings" class="form-select custom-dropdown" data-other-id="warnings_other">
+                            <option value="">Select</option>
+                            <option value="None" {% if student.warnings == "None" %}selected{% endif %}>None</option>
+                            <option value="Verbal Warning" {% if student.warnings == "Verbal Warning" %}selected{% endif %}>Verbal Warning</option>
+                            <option value="Written Warning" {% if student.warnings == "Written Warning" %}selected{% endif %}>Written Warning</option>
+                            <option value="Other" {% if student.warnings and student.warnings not in ["None","Verbal Warning","Written Warning"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="warnings_other" class="form-control mt-2"
+                            {% if student.warnings and student.warnings not in ["None","Verbal Warning","Written Warning"] %}value="{{ student.warnings }}"{% endif %}
+                            placeholder="Enter warnings">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Complaints</label>
+                        <select name="complaints" id="complaints" class="form-select custom-dropdown" data-other-id="complaints_other">
+                            <option value="">Select</option>
+                            <option value="None" {% if student.complaints == "None" %}selected{% endif %}>None</option>
+                            <option value="Minor Complaint" {% if student.complaints == "Minor Complaint" %}selected{% endif %}>Minor Complaint</option>
+                            <option value="Major Complaint" {% if student.complaints == "Major Complaint" %}selected{% endif %}>Major Complaint</option>
+                            <option value="Other" {% if student.complaints and student.complaints not in ["None","Minor Complaint","Major Complaint"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="complaints_other" class="form-control mt-2"
+                            {% if student.complaints and student.complaints not in ["None","Minor Complaint","Major Complaint"] %}value="{{ student.complaints }}"{% endif %}
+                            placeholder="Enter complaints">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Actions Taken</label>
+                        <select name="actions_taken" id="actions_taken" class="form-select custom-dropdown" data-other-id="actions_taken_other">
+                            <option value="">Select</option>
+                            <option value="No Action" {% if student.actions_taken == "No Action" %}selected{% endif %}>No Action</option>
+                            <option value="Counseling" {% if student.actions_taken == "Counseling" %}selected{% endif %}>Counseling</option>
+                            <option value="Disciplinary Action" {% if student.actions_taken == "Disciplinary Action" %}selected{% endif %}>Disciplinary Action</option>
+                            <option value="Other" {% if student.actions_taken and student.actions_taken not in ["No Action","Counseling","Disciplinary Action"] %}selected{% endif %}>Other</option>
+                        </select>
+                        <input type="text" id="actions_taken_other" class="form-control mt-2"
+                            {% if student.actions_taken and student.actions_taken not in ["No Action","Counseling","Disciplinary Action"] %}value="{{ student.actions_taken }}"{% endif %}
+                            placeholder="Enter actions taken">
+                    </div>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
@@ -228,5 +675,69 @@
         </div>
     </div>
 </main>
+<script>
+    (function () {
+        const form = document.querySelector('form[action*="student_profile"]');
+        if (!form) return;
+
+        const selects = Array.from(document.querySelectorAll("select.custom-dropdown"));
+
+        function toggleOther(selectEl) {
+            const otherId = selectEl.dataset.otherId;
+            const otherInput = document.getElementById(otherId);
+            if (!otherInput) return;
+            const show = selectEl.value === "Other";
+            otherInput.style.display = show ? "block" : "none";
+            otherInput.required = show;
+            if (!show) otherInput.value = "";
+        }
+
+        selects.forEach(function (selectEl) {
+            toggleOther(selectEl);
+            selectEl.addEventListener("change", function () {
+                toggleOther(selectEl);
+            });
+        });
+
+        form.addEventListener("submit", function () {
+            selects.forEach(function (selectEl) {
+                if (selectEl.value !== "Other") return;
+                const otherInput = document.getElementById(selectEl.dataset.otherId);
+                if (!otherInput) return;
+                const customValue = (otherInput.value || "").trim();
+                if (!customValue) return;
+                let customOption = selectEl.querySelector('option[data-custom="1"]');
+                if (!customOption) {
+                    customOption = document.createElement("option");
+                    customOption.setAttribute("data-custom", "1");
+                    selectEl.appendChild(customOption);
+                }
+                customOption.value = customValue;
+                customOption.textContent = customValue;
+                selectEl.value = customValue;
+            });
+        });
+    })();
+</script>
+<script>
+    (function () {
+        const toggle = document.getElementById("menuToggle");
+        const overlay = document.getElementById("menuOverlay");
+        const sideMenu = document.getElementById("sideMenu");
+        if (!toggle || !overlay || !sideMenu) return;
+        function closeMenu() {
+            sideMenu.classList.remove("open");
+            overlay.classList.remove("open");
+        }
+        toggle.addEventListener("click", function () {
+            sideMenu.classList.toggle("open");
+            overlay.classList.toggle("open");
+        });
+        overlay.addEventListener("click", closeMenu);
+        sideMenu.querySelectorAll("a.menu-link").forEach(function (link) {
+            link.addEventListener("click", closeMenu);
+        });
+    })();
+</script>
 </body>
 </html>

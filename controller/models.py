@@ -55,11 +55,54 @@ class StudentProfile(db.Model):
     mobile = db.Column(db.String(20))
     address = db.Column(db.Text)
     photo = db.Column(db.String(200))
+    blood_group = db.Column(db.String(20))
+    nationality = db.Column(db.String(50))
+
+    father_name = db.Column(db.String(100))
+    mother_name = db.Column(db.String(100))
+    parent_occupation = db.Column(db.String(100))
+    parent_mobile = db.Column(db.String(20))
+    email_id = db.Column(db.String(100))
+
+    semester = db.Column(db.String(20))
+    admission_year = db.Column(db.String(20))
+    previous_institution = db.Column(db.String(150))
+    internal_marks = db.Column(db.String(50))
+    semester_exam_marks = db.Column(db.String(50))
+    cgpa_gpa = db.Column(db.String(20))
+    arrears_backlogs = db.Column(db.String(100))
+
+    tuition_fee = db.Column(db.String(50))
+    bus_hostel_fee = db.Column(db.String(50))
+    scholarship_category = db.Column(db.String(200))
+    scholarship_amount = db.Column(db.String(50))
+
+    hostel_name = db.Column(db.String(100))
+    room_number = db.Column(db.String(20))
+    roommates_count = db.Column(db.String(20))
+    warden_name = db.Column(db.String(100))
+    warden_mobile = db.Column(db.String(20))
+
+    sports_participation = db.Column(db.String(200))
+    club_memberships = db.Column(db.String(200))
+    achievements_awards = db.Column(db.String(200))
+    events_participated = db.Column(db.String(200))
+
+    project_details = db.Column(db.Text)
+    projects_done = db.Column(db.String(200))
+    internships = db.Column(db.String(200))
+    certifications = db.Column(db.String(200))
+    skills = db.Column(db.String(200))
+
+    warnings = db.Column(db.String(200))
+    complaints = db.Column(db.String(200))
+    actions_taken = db.Column(db.String(200))
 
     # Relationships
     results = db.relationship("Result", backref="student", lazy=True, cascade="all, delete")
     marks = db.relationship("Marks", backref="student", lazy=True, cascade="all, delete")
     attendance = db.relationship("Attendance", backref="student", lazy=True, cascade="all, delete")
+    attachments = db.relationship("StudentAttachment", backref="student", lazy=True, cascade="all, delete")
 
 
 # ---------------- RESULT TABLE ----------------
@@ -110,6 +153,16 @@ class Attendance(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey("student_profile.id"), nullable=False)
     subject = db.Column(db.String(100))
     attendance_percentage = db.Column(db.Float)
+
+
+# ---------------- STUDENT ATTACHMENTS ----------------
+class StudentAttachment(db.Model):
+    __tablename__ = "student_attachment"
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("student_profile.id"), nullable=False)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
 
 
 # ---------------- ADMIN PROFILE ----------------

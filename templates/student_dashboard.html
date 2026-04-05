@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Student Dashboard</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -90,6 +91,93 @@
         color:#fff;
         border:none;
     }
+    .welcome-wrap {
+        display:flex;
+        justify-content:space-between;
+        gap:20px;
+        align-items:flex-start;
+        flex-wrap:wrap;
+    }
+    .passport-box {
+        width:150px;
+        min-width:150px;
+    }
+    .passport-photo {
+        width:140px;
+        height:180px;
+        border-radius:10px;
+        border:1px solid var(--border);
+        object-fit:cover;
+        background:#f3f6fc;
+        display:block;
+    }
+    .passport-empty {
+        width:140px;
+        height:180px;
+        border-radius:10px;
+        border:1px dashed #b7c9e9;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        text-align:center;
+        color:#6b7b95;
+        font-size:12px;
+        background:#f8fbff;
+    }
+    .passport-upload .form-control {
+        font-size:12px;
+        padding:6px;
+    }
+    .passport-upload .btn {
+        font-size:12px;
+    }
+    .menu-toggle{
+        position:fixed;
+        left:16px;
+        top:90px;
+        z-index:1100;
+        border:none;
+        border-radius:10px;
+        background:linear-gradient(90deg,#0ea5e9,#10b981);
+        color:#fff;
+        font-weight:600;
+        padding:10px 14px;
+        box-shadow:0 8px 20px rgba(16,56,108,.25);
+    }
+    .menu-overlay{
+        position:fixed;
+        inset:0;
+        background:rgba(12,24,44,.35);
+        opacity:0;
+        pointer-events:none;
+        transition:opacity .28s ease;
+        z-index:1050;
+    }
+    .menu-overlay.open{
+        opacity:1;
+        pointer-events:auto;
+    }
+    .side-menu{
+        position:fixed;
+        left:0;
+        top:0;
+        bottom:0;
+        width:min(320px,88vw);
+        z-index:1101;
+        transform:translateX(-105%);
+        transition:transform .32s cubic-bezier(.2,.8,.2,1);
+        padding:82px 16px 16px;
+        overflow:auto;
+    }
+    .side-menu.open{
+        transform:translateX(0);
+    }
+    .menu-icon{
+        width:18px;
+        height:18px;
+        margin-right:8px;
+        vertical-align:middle;
+    }
 </style>
 </head>
 <body>
@@ -105,6 +193,28 @@
         </div>
     </div>
 </nav>
+<button type="button" class="menu-toggle" id="menuToggle">Menu</button>
+<div class="menu-overlay" id="menuOverlay"></div>
+<aside class="side-menu" id="sideMenu">
+    <div class="panel p-3">
+        <h6 class="mb-3">Menu</h6>
+        <a href="{{ url_for('student_profile_view') }}" class="menu-link {% if current_page=='profile' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/student-profile.svg') }}" alt="" class="menu-icon">Student Profile
+        </a>
+        <a href="{{ url_for('student_results') }}" class="menu-link {% if current_page=='results' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/results.svg') }}" alt="" class="menu-icon">Results
+        </a>
+        <a href="{{ url_for('student_attachment') }}" class="menu-link {% if current_page=='attachment' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/attachment.svg') }}" alt="" class="menu-icon">Attachment
+        </a>
+        <a href="{{ url_for('student_profile') }}" class="menu-link">
+            <img src="{{ url_for('static', filename='icons/edit.svg') }}" alt="" class="menu-icon">Edit
+        </a>
+        <a href="{{ url_for('student_pdf_options') }}" class="menu-link">
+            <img src="{{ url_for('static', filename='icons/download.svg') }}" alt="" class="menu-icon">Download PDF
+        </a>
+    </div>
+</aside>
 
 <main class="container py-4">
     {% with messages = get_flashed_messages() %}
@@ -116,28 +226,57 @@
     {% endwith %}
 
     <div class="row g-3">
-        <div class="col-lg-3">
-            <div class="panel p-3">
-                <h6 class="mb-3">Menu</h6>
-                <a href="{{ url_for('student_profile_view') }}" class="menu-link {% if current_page=='profile' %}active{% endif %}">Student Profile</a>
-                <a href="{{ url_for('student_results') }}" class="menu-link {% if current_page=='results' %}active{% endif %}">Results</a>
-                <a href="{{ url_for('student_attachment') }}" class="menu-link {% if current_page=='attachment' %}active{% endif %}">Attachment</a>
-                <a href="{{ url_for('student_profile') }}" class="menu-link">Edit</a>
-            </div>
-        </div>
-        <div class="col-lg-9">
+        <div class="col-lg-12">
             <div class="panel p-4">
-                <h5 class="mb-3">Welcome</h5>
-                <p class="mb-2"><strong>Name:</strong> {{ session.get('username') or '-' }}</p>
-                <p class="mb-2"><strong>Register Number:</strong> {{ student.register_number or '-' }}</p>
-                <p class="mb-3 text-muted">Select a menu item to open that page.</p>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a href="{{ url_for('student_profile') }}" class="btn btn-edit-now btn-sm">Add / Update Details</a>
-                    <a href="{{ url_for('student_results') }}" class="btn btn-outline-primary btn-sm">Open Results</a>
+                <div class="welcome-wrap">
+                    <div>
+                        <h5 class="mb-3">Welcome</h5>
+                        <p class="mb-2"><strong>Name:</strong> {{ session.get('username') or '-' }}</p>
+                        <p class="mb-2"><strong>Register Number:</strong> {{ student.register_number or '-' }}</p>
+                        <p class="mb-3 text-muted">Select a menu item to open that page.</p>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a href="{{ url_for('student_profile') }}" class="btn btn-edit-now btn-sm">Add / Update Details</a>
+                            <a href="{{ url_for('student_results') }}" class="btn btn-outline-primary btn-sm">Open Results</a>
+                        </div>
+                    </div>
+                    <div class="passport-box">
+                        {% if student.photo %}
+                            <img src="{{ url_for('static', filename=student.photo) }}" alt="Student Photo" class="passport-photo mb-2">
+                        {% else %}
+                            <div class="passport-empty mb-2">Passport<br>Photo</div>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('student_dashboard_upload_photo') }}" enctype="multipart/form-data" class="passport-upload">
+                            <input type="file" name="photo_file" class="form-control form-control-sm mb-2" accept=".png,.jpg,.jpeg,.webp,.gif" required>
+                            <button type="submit" class="btn btn-outline-primary btn-sm w-100">Upload Photo</button>
+                            <p class="text-muted small mt-2 mb-0"> Only Use professional passport size photo</p>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </main>
+<script>
+    (function () {
+        const toggle = document.getElementById("menuToggle");
+        const overlay = document.getElementById("menuOverlay");
+        const sideMenu = document.getElementById("sideMenu");
+        if (!toggle || !overlay || !sideMenu) return;
+
+        function closeMenu() {
+            sideMenu.classList.remove("open");
+            overlay.classList.remove("open");
+        }
+
+        toggle.addEventListener("click", function () {
+            sideMenu.classList.toggle("open");
+            overlay.classList.toggle("open");
+        });
+        overlay.addEventListener("click", closeMenu);
+        sideMenu.querySelectorAll("a.menu-link").forEach(function (link) {
+            link.addEventListener("click", closeMenu);
+        });
+    })();
+</script>
 </body>
 </html>

@@ -1,12 +1,12 @@
 import os
 import uuid
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
 from controller.database import db
 from controller.config import Config
 from controller.models import (
     User, Role, UserRole,
     StudentProfile, StaffProfile,
-    Result, Marks, Attendance, AdminProfile
+    Result, Marks, Attendance, AdminProfile, StudentAttachment
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -19,9 +19,28 @@ app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
 db.init_app(app)
 
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+ALLOWED_ATTACHMENT_EXTENSIONS = {
+    "png", "jpg", "jpeg", "gif", "webp",
+    "pdf", "doc", "docx", "xls", "xlsx",
+    "ppt", "pptx", "txt", "zip", "rar"
+}
 
 
 def allowed_image_file(filename):
+    if "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_IMAGE_EXTENSIONS
+
+
+def allowed_attachment_file(filename):
+    if "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_ATTACHMENT_EXTENSIONS
+
+
+def is_image_attachment(filename):
     if "." not in filename:
         return False
     ext = filename.rsplit(".", 1)[1].lower()
@@ -61,6 +80,98 @@ def is_student_profile_complete(student):
     return all(value is not None and str(value).strip() for value in required_fields)
 
 
+def save_student_photo(student, file):
+    original_name = secure_filename(file.filename)
+    ext = original_name.rsplit(".", 1)[1].lower()
+    saved_name = f"user_{student.user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    save_path = os.path.join(app.config["UPLOAD_FOLDER"], saved_name)
+    file.save(save_path)
+    student.photo = os.path.join("uploads", saved_name).replace("\\", "/")
+    db.session.commit()
+
+
+def _pdf_safe_text(value):
+    text = "" if value is None else str(value)
+    text = text.encode("latin-1", "replace").decode("latin-1")
+    return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _build_simple_pdf(title, lines):
+    page_width = 595
+    page_height = 842
+    margin = 42
+    line_height = 14
+    max_lines = 52
+
+    chunks = [lines[i:i + max_lines] for i in range(0, len(lines), max_lines)] or [[]]
+    page_count = len(chunks)
+    objects = {}
+
+    # Base objects: 1 Catalog, 2 Pages, 3 Font
+    objects[3] = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+
+    page_refs = []
+    for idx, chunk in enumerate(chunks, start=1):
+        page_obj = 4 + (idx - 1) * 2
+        content_obj = page_obj + 1
+
+        content_lines = [
+            "BT",
+            "/F1 11 Tf",
+            f"{margin} {page_height - margin} Td",
+            f"{line_height} TL",
+            f"({_pdf_safe_text(title)} - Page {idx}/{page_count}) Tj",
+            "T*",
+            "T*",
+        ]
+        for line in chunk:
+            content_lines.append(f"({_pdf_safe_text(line)}) Tj")
+            content_lines.append("T*")
+        content_lines.append("ET")
+        content_stream = "\n".join(content_lines).encode("latin-1", "replace")
+        objects[content_obj] = (
+            f"<< /Length {len(content_stream)} >>\nstream\n".encode("latin-1")
+            + content_stream
+            + b"\nendstream"
+        )
+
+        objects[page_obj] = (
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_width} {page_height}] "
+            f"/Resources << /Font << /F1 3 0 R >> >> /Contents {content_obj} 0 R >>"
+        ).encode("latin-1")
+        page_refs.append(f"{page_obj} 0 R")
+
+    objects[2] = f"<< /Type /Pages /Kids [{' '.join(page_refs)}] /Count {page_count} >>".encode("latin-1")
+    objects[1] = b"<< /Type /Catalog /Pages 2 0 R >>"
+
+    max_obj = max(objects)
+    pdf = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0] * (max_obj + 1)
+
+    for obj_num in range(1, max_obj + 1):
+        offsets[obj_num] = len(pdf)
+        pdf.extend(f"{obj_num} 0 obj\n".encode("latin-1"))
+        pdf.extend(objects[obj_num])
+        pdf.extend(b"\nendobj\n")
+
+    xref_start = len(pdf)
+    pdf.extend(f"xref\n0 {max_obj + 1}\n".encode("latin-1"))
+    pdf.extend(b"0000000000 65535 f \n")
+    for obj_num in range(1, max_obj + 1):
+        pdf.extend(f"{offsets[obj_num]:010d} 00000 n \n".encode("latin-1"))
+
+    pdf.extend(
+        f"trailer\n<< /Size {max_obj + 1} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF".encode("latin-1")
+    )
+    return bytes(pdf)
+
+
+def _student_pdf_file_path(student):
+    pdf_dir = os.path.join(app.config["UPLOAD_FOLDER"], "student_pdfs")
+    os.makedirs(pdf_dir, exist_ok=True)
+    return os.path.join(pdf_dir, f"student_{student.user_id}_total_details.pdf")
+
+
 # ---------------- CREATE TABLES ----------------
 
 with app.app_context():
@@ -70,6 +181,48 @@ with app.app_context():
     if "photo" not in staff_columns:
         db.session.execute(text("ALTER TABLE staff_profile ADD COLUMN photo VARCHAR(200)"))
         db.session.commit()
+    student_columns = {row[1] for row in db.session.execute(text("PRAGMA table_info(student_profile)")).all()}
+    student_extra_columns = {
+        "blood_group": "VARCHAR(20)",
+        "nationality": "VARCHAR(50)",
+        "father_name": "VARCHAR(100)",
+        "mother_name": "VARCHAR(100)",
+        "parent_occupation": "VARCHAR(100)",
+        "parent_mobile": "VARCHAR(20)",
+        "email_id": "VARCHAR(100)",
+        "semester": "VARCHAR(20)",
+        "admission_year": "VARCHAR(20)",
+        "previous_institution": "VARCHAR(150)",
+        "internal_marks": "VARCHAR(50)",
+        "semester_exam_marks": "VARCHAR(50)",
+        "cgpa_gpa": "VARCHAR(20)",
+        "arrears_backlogs": "VARCHAR(100)",
+        "tuition_fee": "VARCHAR(50)",
+        "bus_hostel_fee": "VARCHAR(50)",
+        "scholarship_category": "VARCHAR(200)",
+        "scholarship_amount": "VARCHAR(50)",
+        "hostel_name": "VARCHAR(100)",
+        "room_number": "VARCHAR(20)",
+        "roommates_count": "VARCHAR(20)",
+        "warden_name": "VARCHAR(100)",
+        "warden_mobile": "VARCHAR(20)",
+        "sports_participation": "VARCHAR(200)",
+        "club_memberships": "VARCHAR(200)",
+        "achievements_awards": "VARCHAR(200)",
+        "events_participated": "VARCHAR(200)",
+        "project_details": "TEXT",
+        "projects_done": "VARCHAR(200)",
+        "internships": "VARCHAR(200)",
+        "certifications": "VARCHAR(200)",
+        "skills": "VARCHAR(200)",
+        "warnings": "VARCHAR(200)",
+        "complaints": "VARCHAR(200)",
+        "actions_taken": "VARCHAR(200)",
+    }
+    for column_name, column_type in student_extra_columns.items():
+        if column_name not in student_columns:
+            db.session.execute(text(f"ALTER TABLE student_profile ADD COLUMN {column_name} {column_type}"))
+    db.session.commit()
     admin_role = Role.query.filter_by(name="Admin").first()
     if not admin_role:
         admin_role = Role(name="Admin")
@@ -290,6 +443,164 @@ def student_profile_view():
     )
 
 
+@app.route("/student_download_profile_pdf")
+def student_download_profile_pdf():
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
+
+    student = get_current_student(session.get("user_id"))
+    attachments = (
+        StudentAttachment.query
+        .filter_by(student_id=student.id)
+        .order_by(StudentAttachment.id.desc())
+        .all()
+    )
+
+    name = student.user.username if getattr(student, "user", None) else (session.get("username") or "-")
+    lines = [
+        "STUDENT PROFILE",
+        "",
+        f"Name: {name}",
+        f"Register Number: {student.register_number or '-'}",
+        f"Batch: {student.batch or '-'}",
+        f"Course: {student.course or '-'}",
+        f"Branch: {student.branch or '-'}",
+        f"Gender: {student.gender or '-'}",
+        f"Date of Birth: {student.dob or '-'}",
+        f"Blood Group: {student.blood_group or '-'}",
+        f"Nationality: {student.nationality or '-'}",
+        f"Hostel: {student.hostel or '-'}",
+        f"Bus: {student.bus or '-'}",
+        f"Admission Quota: {student.admission_quota or '-'}",
+        f"First Graduate: {student.first_graduate or '-'}",
+        f"Personal Email: {student.personal_email or '-'}",
+        f"College Email: {student.college_email or '-'}",
+        f"Email ID: {student.email_id or '-'}",
+        f"Mobile Number (Student): {student.mobile or '-'}",
+        f"Address: {student.address or '-'}",
+        "",
+        "FAMILY DETAILS",
+        f"Father Name: {student.father_name or '-'}",
+        f"Mother Name: {student.mother_name or '-'}",
+        f"Parent Occupation: {student.parent_occupation or '-'}",
+        f"Mobile Number (Parent): {student.parent_mobile or '-'}",
+        "",
+        "ACADEMIC INFORMATION",
+        f"Semester: {student.semester or '-'}",
+        f"Admission Year: {student.admission_year or '-'}",
+        f"Previous School / College: {student.previous_institution or '-'}",
+        f"Internal Marks: {student.internal_marks or '-'}",
+        f"Semester Exam Marks: {student.semester_exam_marks or '-'}",
+        f"CGPA / GPA: {student.cgpa_gpa or '-'}",
+        f"Arrears / Backlogs: {student.arrears_backlogs or '-'}",
+        "",
+        "FEE & SCHOLARSHIP DETAILS",
+        f"Tuition Fee: {student.tuition_fee or '-'}",
+        f"Bus Fee / Hostel Fee: {student.bus_hostel_fee or '-'}",
+        f"Scholarship Details: {getattr(student, 'scholarship_category', None) or '-'}",
+        f"Scholarship Amount: {student.scholarship_amount or '-'}",
+        "",
+        "HOSTEL DETAILS",
+        f"Hostel Name: {student.hostel_name or '-'}",
+        f"Room Number: {student.room_number or '-'}",
+        f"Roommates Count: {student.roommates_count or '-'}",
+        f"Warden Name: {student.warden_name or '-'}",
+        f"Warden Mobile Number: {student.warden_mobile or '-'}",
+        "",
+        "EXTRA-CURRICULAR ACTIVITIES",
+        f"Sports Participation: {student.sports_participation or '-'}",
+        f"Club Memberships: {student.club_memberships or '-'}",
+        f"Achievements / Awards: {student.achievements_awards or '-'}",
+        f"Events Participated: {student.events_participated or '-'}",
+        "",
+        "PROFESSIONAL / CAREER DETAILS",
+        f"Projects Done: {student.projects_done or '-'}",
+        f"Internships: {student.internships or '-'}",
+        f"Certifications: {student.certifications or '-'}",
+        f"Skills: {student.skills or '-'}",
+        f"Project Details: {student.project_details or '-'}",
+        "",
+        "DISCIPLINARY RECORDS",
+        f"Warnings: {student.warnings or '-'}",
+        f"Complaints: {student.complaints or '-'}",
+        f"Actions Taken: {student.actions_taken or '-'}",
+        "",
+        "RESULT DETAILS",
+    ]
+
+    if student.results:
+        for idx, item in enumerate(student.results, start=1):
+            lines.extend([
+                f"{idx}. Sem {item.semester or '-'} | {item.subject_code or '-'} | {item.subject_name or '-'} | {item.grade or '-'} | {item.result_status or '-'} | {item.month_year or '-'}"
+            ])
+    else:
+        lines.append("No result details available")
+
+    lines.extend(["", "MARKS"])
+    if student.marks:
+        for idx, item in enumerate(student.marks, start=1):
+            lines.append(f"{idx}. {item.subject or '-'} - {item.marks if item.marks is not None else '-'}")
+    else:
+        lines.append("No marks available")
+
+    lines.extend(["", "ATTENDANCE"])
+    if student.attendance:
+        for idx, item in enumerate(student.attendance, start=1):
+            lines.append(f"{idx}. {item.subject or '-'} - {item.attendance_percentage if item.attendance_percentage is not None else '-'}%")
+    else:
+        lines.append("No attendance available")
+
+    lines.extend(["", "ATTACHMENTS"])
+    if attachments:
+        for idx, item in enumerate(attachments, start=1):
+            lines.append(f"{idx}. {item.file_name} ({item.file_path})")
+    else:
+        lines.append("No attachments uploaded")
+
+    pdf_bytes = _build_simple_pdf("Student Total Details", lines)
+    saved_pdf_path = _student_pdf_file_path(student)
+    with open(saved_pdf_path, "wb") as pdf_file:
+        pdf_file.write(pdf_bytes)
+
+    filename = os.path.basename(saved_pdf_path)
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+@app.route("/student_pdf_options")
+def student_pdf_options():
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
+
+    student = get_current_student(session.get("user_id"))
+    pdf_exists = os.path.exists(_student_pdf_file_path(student))
+    return render_template(
+        "student_pdf_actions.html",
+        student=student,
+        pdf_exists=pdf_exists,
+        current_page="pdf"
+    )
+
+
+@app.route("/student_remove_profile_pdf", methods=["POST"])
+def student_remove_profile_pdf():
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
+
+    student = get_current_student(session.get("user_id"))
+    pdf_path = _student_pdf_file_path(student)
+    if os.path.exists(pdf_path):
+        os.remove(pdf_path)
+        flash("PDF removed successfully")
+    else:
+        flash("No PDF file found to remove")
+
+    return redirect(url_for("student_pdf_options"))
+
+
 # ================= STUDENT RESULTS =================
 @app.route("/student_results")
 def student_results():
@@ -316,32 +627,115 @@ def student_attachment():
 
     student = get_current_student(session.get("user_id"))
     if request.method == "POST":
-        file = request.files.get("photo_file")
-        if not file or file.filename == "":
-            flash("Please choose a photo file")
+        files = request.files.getlist("photo_files")
+        files = [f for f in files if f and f.filename]
+        if not files:
+            flash("Please choose one or more files")
             return redirect(url_for("student_attachment"))
 
-        if not allowed_image_file(file.filename):
-            flash("Only PNG, JPG, JPEG, GIF, WEBP files are allowed")
+        uploaded_count = 0
+        for file in files:
+            if not allowed_attachment_file(file.filename):
+                continue
+
+            original_name = secure_filename(file.filename)
+            ext = original_name.rsplit(".", 1)[1].lower()
+            saved_name = f"att_{student.user_id}_{uuid.uuid4().hex[:10]}.{ext}"
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], saved_name)
+            file.save(save_path)
+            relative_path = os.path.join("uploads", saved_name).replace("\\", "/")
+
+            db.session.add(StudentAttachment(
+                student_id=student.id,
+                file_name=original_name,
+                file_path=relative_path
+            ))
+
+            if is_image_attachment(original_name):
+                student.photo = relative_path
+            uploaded_count += 1
+
+        if uploaded_count == 0:
+            flash("No valid files selected. Allowed: images, pdf, doc, xls, ppt, txt, zip, rar")
             return redirect(url_for("student_attachment"))
 
-        original_name = secure_filename(file.filename)
-        ext = original_name.rsplit(".", 1)[1].lower()
-        saved_name = f"user_{student.user_id}_{uuid.uuid4().hex[:8]}.{ext}"
-        save_path = os.path.join(app.config["UPLOAD_FOLDER"], saved_name)
-        file.save(save_path)
-
-        student.photo = os.path.join("uploads", saved_name).replace("\\", "/")
         db.session.commit()
-        flash("Attachment uploaded successfully")
+        flash(f"{uploaded_count} file(s) uploaded successfully")
         return redirect(url_for("student_attachment"))
+
+    attachments = (
+        StudentAttachment.query
+        .filter_by(student_id=student.id)
+        .order_by(StudentAttachment.id.desc())
+        .all()
+    )
 
     return render_template(
         "student_attachment.html",
         student=student,
+        attachments=attachments,
+        is_image_attachment=is_image_attachment,
         profile_complete=is_student_profile_complete(student),
         current_page="attachment"
     )
+
+
+@app.route("/student_attachment/delete/<int:attachment_id>", methods=["POST"])
+def delete_student_attachment(attachment_id):
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
+
+    student = get_current_student(session.get("user_id"))
+    attachment = StudentAttachment.query.filter_by(id=attachment_id, student_id=student.id).first()
+    if not attachment:
+        flash("Attachment not found")
+        return redirect(url_for("student_attachment"))
+
+    removed_path = attachment.file_path
+    upload_root = os.path.abspath(os.path.join(app.root_path, app.config["UPLOAD_FOLDER"]))
+    target_path = os.path.abspath(os.path.join(app.static_folder, removed_path.replace("/", os.sep)))
+    if target_path.startswith(upload_root) and os.path.exists(target_path):
+        os.remove(target_path)
+
+    db.session.delete(attachment)
+    db.session.flush()
+
+    if student.photo == removed_path:
+        student.photo = None
+        remaining = (
+            StudentAttachment.query
+            .filter_by(student_id=student.id)
+            .order_by(StudentAttachment.id.desc())
+            .all()
+        )
+        for item in remaining:
+            if is_image_attachment(item.file_name):
+                student.photo = item.file_path
+                break
+
+    db.session.commit()
+    flash("Attachment removed successfully")
+    return redirect(url_for("student_attachment"))
+
+
+@app.route("/student_dashboard/upload_photo", methods=["POST"])
+def student_dashboard_upload_photo():
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
+
+    student = get_current_student(session.get("user_id"))
+    file = request.files.get("photo_file")
+    if not file or file.filename == "":
+        flash("Please choose a passport photo file")
+        return redirect(url_for("student_dashboard"))
+
+    if not allowed_image_file(file.filename):
+        flash("Only PNG, JPG, JPEG, GIF, WEBP files are allowed")
+        return redirect(url_for("student_dashboard"))
+
+    save_student_photo(student, file)
+    flash("Passport photo uploaded successfully")
+    return redirect(url_for("student_dashboard"))
 
 
 # ================= STUDENT PROFILE EDIT =================
@@ -351,10 +745,20 @@ def student_profile():
         return redirect(url_for("login"))
 
     student = get_current_student(session.get("user_id"))
+    current_user = User.query.get(session.get("user_id"))
 
     is_setup_mode = request.args.get("setup") == "1" or not is_student_profile_complete(student)
 
     if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        if not username:
+            flash("Name is required")
+            return redirect(url_for("student_profile", setup=1 if is_setup_mode else None))
+
+        if current_user:
+            current_user.username = username
+            session["username"] = username
+
         student.register_number = request.form.get("register_number")
         student.batch = request.form.get("batch") 
         student.course = request.form.get("course")
@@ -369,6 +773,41 @@ def student_profile():
         student.college_email = request.form.get("college_email")
         student.mobile = request.form.get("mobile")
         student.address = request.form.get("address")
+        student.blood_group = request.form.get("blood_group")
+        student.nationality = request.form.get("nationality")
+        student.father_name = request.form.get("father_name")
+        student.mother_name = request.form.get("mother_name")
+        student.parent_occupation = request.form.get("parent_occupation")
+        student.parent_mobile = request.form.get("parent_mobile")
+        student.email_id = request.form.get("email_id")
+        student.semester = request.form.get("semester")
+        student.admission_year = request.form.get("admission_year")
+        student.previous_institution = request.form.get("previous_institution")
+        student.internal_marks = request.form.get("internal_marks")
+        student.semester_exam_marks = request.form.get("semester_exam_marks")
+        student.cgpa_gpa = request.form.get("cgpa_gpa")
+        student.arrears_backlogs = request.form.get("arrears_backlogs")
+        student.tuition_fee = request.form.get("tuition_fee")
+        student.bus_hostel_fee = request.form.get("bus_hostel_fee")
+        student.scholarship_details = request.form.get("scholarship_details")
+        student.scholarship_amount = request.form.get("scholarship_amount")
+        student.hostel_name = request.form.get("hostel_name")
+        student.room_number = request.form.get("room_number")
+        student.roommates_count = request.form.get("roommates_count")
+        student.warden_name = request.form.get("warden_name")
+        student.warden_mobile = request.form.get("warden_mobile")
+        student.sports_participation = request.form.get("sports_participation")
+        student.club_memberships = request.form.get("club_memberships")
+        student.achievements_awards = request.form.get("achievements_awards")
+        student.events_participated = request.form.get("events_participated")
+        student.project_details = request.form.get("project_details")
+        student.projects_done = request.form.get("projects_done")
+        student.internships = request.form.get("internships")
+        student.certifications = request.form.get("certifications")
+        student.skills = request.form.get("skills")
+        student.warnings = request.form.get("warnings")
+        student.complaints = request.form.get("complaints")
+        student.actions_taken = request.form.get("actions_taken")
 
         db.session.commit()
         if is_setup_mode:
@@ -939,5 +1378,3 @@ def logout():
 # ================= RUN =================
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
-
-

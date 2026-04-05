@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Student Profile Icon">
+  <g fill="#000">
+    <path d="M22 38.5 64 18l42 20.5a2 2 0 0 1 0 3.6L64 62.6 22 42.1a2 2 0 0 1 0-3.6z"/>
+    <path d="M24 44v25h4V45.9l-4-1.9z"/>
+    <circle cx="26" cy="71" r="2.5"/>
+    <path d="M32 50.5V63c0 17.7 14.3 32 32 32s32-14.3 32-32V50.5L64 66 32 50.5z"/>
+    <path d="M64 78c-22 0-40 14.8-40 33v5h80v-5c0-18.2-18-33-40-33z"/>
+  </g>
+</svg>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Student Profile</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -50,6 +51,53 @@
         border-color:#94c6ff;
         font-weight:600;
     }
+    .menu-toggle{
+        position:fixed;
+        left:16px;
+        top:90px;
+        z-index:1100;
+        border:none;
+        border-radius:10px;
+        background:linear-gradient(90deg,#0ea5e9,#10b981);
+        color:#fff;
+        font-weight:600;
+        padding:10px 14px;
+        box-shadow:0 8px 20px rgba(16,56,108,.25);
+    }
+    .menu-overlay{
+        position:fixed;
+        inset:0;
+        background:rgba(12,24,44,.35);
+        opacity:0;
+        pointer-events:none;
+        transition:opacity .28s ease;
+        z-index:1050;
+    }
+    .menu-overlay.open{
+        opacity:1;
+        pointer-events:auto;
+    }
+    .side-menu{
+        position:fixed;
+        left:0;
+        top:0;
+        bottom:0;
+        width:min(320px,88vw);
+        z-index:1101;
+        transform:translateX(-105%);
+        transition:transform .32s cubic-bezier(.2,.8,.2,1);
+        padding:82px 16px 16px;
+        overflow:auto;
+    }
+    .side-menu.open{
+        transform:translateX(0);
+    }
+    .menu-icon{
+        width:18px;
+        height:18px;
+        margin-right:8px;
+        vertical-align:middle;
+    }
 </style>
 </head>
 <body>
@@ -59,23 +107,27 @@
         <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
     </div>
 </nav>
+<button type="button" class="menu-toggle" id="menuToggle">Menu</button>
+<div class="menu-overlay" id="menuOverlay"></div>
+<aside class="side-menu" id="sideMenu">
+    <div class="panel p-3">
+        <h6 class="mb-3">Menu</h6>
+        <a href="{{ url_for('student_profile_view') }}" class="menu-link {% if current_page=='profile' %}active{% endif %}"><img src="{{ url_for('static', filename='icons/student-profile.svg') }}" alt="" class="menu-icon">Student Profile</a>
+        <a href="{{ url_for('student_results') }}" class="menu-link {% if current_page=='results' %}active{% endif %}"><img src="{{ url_for('static', filename='icons/results.svg') }}" alt="" class="menu-icon">Results</a>
+        <a href="{{ url_for('student_attachment') }}" class="menu-link {% if current_page=='attachment' %}active{% endif %}"><img src="{{ url_for('static', filename='icons/attachment.svg') }}" alt="" class="menu-icon">Attachment</a>
+        <a href="{{ url_for('student_profile') }}" class="menu-link"><img src="{{ url_for('static', filename='icons/edit.svg') }}" alt="" class="menu-icon">Edit</a>
+        <a href="{{ url_for('student_pdf_options') }}" class="menu-link"><img src="{{ url_for('static', filename='icons/download.svg') }}" alt="" class="menu-icon">Download PDF</a>
+        <a href="{{ url_for('student_dashboard') }}" class="menu-link">Dashboard</a>
+    </div>
+</aside>
 
 <main class="container py-4">
     <div class="row g-3">
-        <div class="col-lg-3">
-            <div class="panel p-3">
-                <h6 class="mb-3">Menu</h6>
-                <a href="{{ url_for('student_profile_view') }}" class="menu-link {% if current_page=='profile' %}active{% endif %}">Student Profile</a>
-                <a href="{{ url_for('student_results') }}" class="menu-link {% if current_page=='results' %}active{% endif %}">Results</a>
-                <a href="{{ url_for('student_attachment') }}" class="menu-link {% if current_page=='attachment' %}active{% endif %}">Attachment</a>
-                <a href="{{ url_for('student_profile') }}" class="menu-link">Edit</a>
-                <a href="{{ url_for('student_dashboard') }}" class="menu-link">Dashboard</a>
-            </div>
-        </div>
-        <div class="col-lg-9">
+        <div class="col-lg-12">
             <div class="panel p-4">
                 <h5 class="mb-3">Student Details</h5>
                 <div class="row">
+                    <div class="col-md-6"><p><strong>Name:</strong> {{ student.user.username if student.user else (session.get('username') or '-') }}</p></div>
                     <div class="col-md-6"><p><strong>Register Number:</strong> {{ student.register_number or '-' }}</p></div>
                     <div class="col-md-6"><p><strong>Batch:</strong> {{ student.batch or '-' }}</p></div>
                     <div class="col-md-6"><p><strong>Course:</strong> {{ student.course or '-' }}</p></div>
@@ -88,12 +140,113 @@
                     <div class="col-md-6"><p><strong>First Graduate:</strong> {{ student.first_graduate or '-' }}</p></div>
                     <div class="col-md-6"><p><strong>Personal Email:</strong> {{ student.personal_email or '-' }}</p></div>
                     <div class="col-md-6"><p><strong>College Email:</strong> {{ student.college_email or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Email ID:</strong> {{ student.email_id or '-' }}</p></div>
                     <div class="col-md-6"><p><strong>Mobile:</strong> {{ student.mobile or '-' }}</p></div>
-                    <div class="col-12"><p class="mb-0"><strong>Address:</strong> {{ student.address or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Blood Group:</strong> {{ student.blood_group or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Nationality:</strong> {{ student.nationality or '-' }}</p></div>
+                    <div class="col-12"><p><strong>Address:</strong> {{ student.address or '-' }}</p></div>
+
+                    <div class="col-12 mt-2"><h6>Family Details</h6></div>
+                    <div class="col-md-6"><p><strong>Father Name:</strong> {{ student.father_name or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Mother Name:</strong> {{ student.mother_name or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Parent Occupation:</strong> {{ student.parent_occupation or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Mobile Number (Parent):</strong> {{ student.parent_mobile or '-' }}</p></div>
+
+                    <div class="col-12 mt-2"><h6>Academic Information</h6></div>
+                    <div class="col-md-6"><p><strong>Semester:</strong> {{ student.semester or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Admission Year:</strong> {{ student.admission_year or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Previous School / College:</strong> {{ student.previous_institution or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Internal Marks:</strong> {{ student.internal_marks or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Semester Exam Marks:</strong> {{ student.semester_exam_marks or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>CGPA / GPA:</strong> {{ student.cgpa_gpa or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Arrears / Backlogs:</strong> {{ student.arrears_backlogs or '-' }}</p></div>
+
+                    <div class="col-12 mt-2"><h6>Fee & Scholarship Details</h6></div>
+                    <div class="col-md-6"><p><strong>Tuition Fee:</strong> {{ student.tuition_fee or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Bus Fee / Hostel Fee:</strong> {{ student.bus_hostel_fee or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Scholarship category:</strong> {{ student.scholarship_category or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Scholarship Amount:</strong> {{ student.scholarship_amount or '-' }}</p></div>
+
+                    <div class="col-12 mt-2"><h6>Hostel Details</h6></div>
+                    <div class="col-md-6"><p><strong>Hostel Name:</strong> {{ student.hostel_name or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Room Number:</strong> {{ student.room_number or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Roommates Count:</strong> {{ student.roommates_count or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Warden Name:</strong> {{ student.warden_name or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Warden Mobile Number:</strong> {{ student.warden_mobile or '-' }}</p></div>
+
+                    <div class="col-12 mt-2"><h6>Extra-Curricular Activities</h6></div>
+                    <div class="col-md-6"><p><strong>Sports Participation:</strong> {{ student.sports_participation or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Club Memberships:</strong> {{ student.club_memberships or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Achievements / Awards:</strong> {{ student.achievements_awards or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Events Participated:</strong> {{ student.events_participated or '-' }}</p></div>
+
+                    <div class="col-12 mt-2"><h6>Professional / Career Details</h6></div>
+                    <div class="col-md-6"><p><strong>Projects Done:</strong> {{ student.projects_done or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Internships:</strong> {{ student.internships or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Certifications:</strong> {{ student.certifications or '-' }}</p></div>
+                    <div class="col-md-6"><p><strong>Skills:</strong> {{ student.skills or '-' }}</p></div>
+                    <div class="col-12"><p><strong>Project Details:</strong> {{ student.project_details or '-' }}</p></div>
+
+                    <div class="col-12 mt-2"><h6>Disciplinary Records</h6></div>
+                    <div class="col-md-4"><p><strong>Warnings:</strong> {{ student.warnings or '-' }}</p></div>
+                    <div class="col-md-4"><p><strong>Complaints:</strong> {{ student.complaints or '-' }}</p></div>
+                    <div class="col-md-4"><p><strong>Actions Taken:</strong> {{ student.actions_taken or '-' }}</p></div>
                 </div>
+                <hr>
+                <h6 class="mb-3">Result Details</h6>
+                {% if student.results %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Semester</th>
+                                <th>Subject Code</th>
+                                <th>Subject Name</th>
+                                <th>Grade</th>
+                                <th>Status</th>
+                                <th>Month/Year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in student.results %}
+                            <tr>
+                                <td>{{ item.semester or '-' }}</td>
+                                <td>{{ item.subject_code or '-' }}</td>
+                                <td>{{ item.subject_name or '-' }}</td>
+                                <td>{{ item.grade or '-' }}</td>
+                                <td>{{ item.result_status or '-' }}</td>
+                                <td>{{ item.month_year or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted mb-0">No result details available.</p>
+                {% endif %}
             </div>
         </div>
     </div>
 </main>
+<script>
+    (function () {
+        const toggle = document.getElementById("menuToggle");
+        const overlay = document.getElementById("menuOverlay");
+        const sideMenu = document.getElementById("sideMenu");
+        if (!toggle || !overlay || !sideMenu) return;
+        function closeMenu() {
+            sideMenu.classList.remove("open");
+            overlay.classList.remove("open");
+        }
+        toggle.addEventListener("click", function () {
+            sideMenu.classList.toggle("open");
+            overlay.classList.toggle("open");
+        });
+        overlay.addEventListener("click", closeMenu);
+        sideMenu.querySelectorAll("a.menu-link").forEach(function (link) {
+            link.addEventListener("click", closeMenu);
+        });
+    })();
+</script>
 </body>
 </html>

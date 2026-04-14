@@ -8,6 +8,7 @@
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/unified-theme.css') }}" rel="stylesheet">
 
     <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -17,7 +18,7 @@
             margin: 0;
             font-family: 'Poppins', sans-serif;
             height: 100vh;
-            background: linear-gradient(-45deg, #6297f8, #fefffb, #a0e9ff, #d2cdb8);
+            background: linear-gradient(-45deg, #99cdd8, #daebe3, #fde8d3, #f1b9a4,  #cfd6c4,  #4b564c);
             background-size: 400% 400%;
             animation: gradientMove 10s ease infinite;
             display: flex;
@@ -38,12 +39,12 @@
             animation: orbFloat 8s ease-in-out infinite;
         }
         body::before {
-            background: #7ed0ff;
+            background: #fcd9b6;
             top: -80px;
             left: -70px;
         }
         body::after {
-            background: #f3ccff;
+            background: #fff3e4;
             bottom: -90px;
             right: -90px;
             animation-delay: 1.2s;
@@ -81,15 +82,15 @@
 
         .form-control:focus {
             box-shadow: none;
-            border-color: #4facfe;
+            border-color: #131415;
             transform: translateY(-1px);
-            box-shadow: 0 8px 18px rgba(79, 172, 254, .25);
+            box-shadow: 0 8px 18px rgba(11, 11, 11, 0.25);
         }
 
         .btn-custom {
-            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            background: linear-gradient(45deg, #d2945a, #ffefa9);
             border: none;
-            color: white;
+            color: rgb(255, 255, 255);
             font-weight: 500;
             height: 45px;
             border-radius: 10px;
@@ -98,7 +99,7 @@
 
         .btn-custom:hover {
             transform: scale(1.03);
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #68696c, #f9f4ff);
         }
         .btn-custom.loading {
             position: relative;
@@ -263,5 +264,7 @@
     }
 </script>
 
+<script src="{{ url_for('static', filename='js/unified-effects.js') }}"></script>
 </body>
 </html>
+

@@ -6,6 +6,7 @@
 <title>Edit Student Profile</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/unified-theme.css') }}" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -33,6 +34,67 @@
         border-radius:16px;
         background:var(--panel);
         box-shadow: 0 14px 32px rgba(17, 59, 109, 0.08);
+    }
+    .menu-link {
+        display:block;
+        width:100%;
+        padding:11px 13px;
+        border-radius:11px;
+        text-decoration:none;
+        color:#123257;
+        background:linear-gradient(180deg,#eef5ff,#e8f0ff);
+        border:1px solid #c5d7f7;
+        margin-bottom:10px;
+        transition:all .18s ease;
+    }
+    .menu-link:hover { transform:translateX(2px); border-color:#9ac0ff; }
+    .menu-link.active {
+        background:linear-gradient(90deg,#d8f3ff,#d8e8ff);
+        border-color:#94c6ff;
+        font-weight:600;
+    }
+    .edit-sections{
+        display:grid;
+        gap:14px;
+    }
+    .edit-section{
+        border:1px solid var(--border);
+        border-radius:16px;
+        background:linear-gradient(180deg,#ffffff,#f8fbff);
+        overflow:hidden;
+    }
+    .edit-section-toggle{
+        width:100%;
+        border:0;
+        background:linear-gradient(90deg,#edf5ff,#f7fbff);
+        color:#123257;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        padding:16px 18px;
+        font-weight:600;
+        text-align:left;
+    }
+    .edit-section-toggle span:last-child{
+        font-size:22px;
+        line-height:1;
+        transition:transform .2s ease;
+    }
+    .edit-section.open .edit-section-toggle span:last-child{
+        transform:rotate(45deg);
+    }
+    .edit-section-body{
+        padding:18px;
+        border-top:1px solid var(--border);
+    }
+    .edit-section-body[hidden]{
+        display:none !important;
+    }
+    .field-note{
+        color:#5d7496;
+        font-size:13px;
+        margin-bottom:14px;
     }
     .panel-head {
         border-bottom:1px solid var(--border);
@@ -96,6 +158,25 @@
         height:18px;
         margin-right:8px;
         vertical-align:middle;
+    }
+    .edit-section-toggle:focus-visible{
+        outline:2px solid #78aefe;
+        outline-offset:-2px;
+    }
+    .panel-head.collapsible-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        cursor:pointer;
+    }
+    .panel-caret{
+        font-size:22px;
+        line-height:1;
+        transition:transform .2s ease;
+    }
+    .panel-head.collapsible-head.open .panel-caret{
+        transform:rotate(45deg);
     }
 </style>
 </head>
@@ -680,6 +761,185 @@
         const form = document.querySelector('form[action*="student_profile"]');
         if (!form) return;
 
+        const formGrid = form.querySelector(".row.g-3");
+        if (!formGrid) return;
+
+        const sections = [
+            {
+                title: "1. Basic Profile Details",
+                fields: ["username", "register_number", "batch", "course", "branch", "gender", "dob", "blood_group", "nationality"]
+            },
+            {
+                title: "2. Contact Information",
+                fields: ["personal_email", "college_email", "mobile", "address"]
+            },
+            {
+                title: "3. Family Details",
+                fields: ["father_name", "mother_name", "parent_occupation", "parent_mobile", "email_id"]
+            },
+            {
+                title: "4. Academic Information",
+                fields: ["semester", "admission_year", "previous_institution", "internal_marks", "semester_exam_marks", "cgpa_gpa", "arrears_backlogs"]
+            },
+            {
+                title: "8. Hostel & Transport",
+                fields: ["hostel", "hostel_name", "room_number", "roommates_count", "warden_name", "warden_mobile", "bus"]
+            },
+            {
+                title: "9. Fees & Scholarship",
+                fields: ["tuition_fee", "bus_hostel_fee", "scholarship_details", "scholarship_amount", "admission_quota", "first_graduate"]
+            },
+            {
+                title: "10. Extra-Curricular Activities",
+                fields: ["sports_participation", "club_memberships", "achievements_awards", "events_participated"]
+            },
+            {
+                title: "11. Professional Details",
+                fields: ["projects_done", "internships", "certifications", "skills", "project_details"]
+            },
+            {
+                title: "12. Disciplinary Record",
+                fields: ["warnings", "complaints", "actions_taken"]
+            }
+        ];
+
+        const fieldMap = new Map();
+        const extras = [];
+
+        Array.from(formGrid.children).forEach(function (node) {
+            if (!node.matches("div")) return;
+            if (node.querySelector("h6")) return;
+            const control = node.querySelector("input[name], select[name], textarea[name]");
+            if (!control) {
+                extras.push(node);
+                return;
+            }
+            const name = control.getAttribute("name");
+            if (!fieldMap.has(name)) fieldMap.set(name, []);
+            fieldMap.get(name).push(node);
+        });
+
+        const accordion = document.createElement("div");
+        accordion.className = "edit-sections";
+        const rows = [];
+
+        sections.forEach(function (section, index) {
+            const block = document.createElement("section");
+            block.className = "edit-section";
+            if (index === 0) block.classList.add("open");
+
+            const sectionId = "editSection" + index;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "edit-section-toggle";
+            button.setAttribute("aria-expanded", index === 0 ? "true" : "false");
+            button.setAttribute("aria-controls", sectionId);
+            button.innerHTML = "<span>" + section.title + "</span><span>+</span>";
+
+            const body = document.createElement("div");
+            body.className = "edit-section-body";
+            body.id = sectionId;
+            body.hidden = index !== 0;
+
+            const row = document.createElement("div");
+            row.className = "row g-3";
+            body.appendChild(row);
+
+            block.appendChild(button);
+            block.appendChild(body);
+            accordion.appendChild(block);
+            rows.push(row);
+        });
+
+        sections.forEach(function (section, sectionIndex) {
+            section.fields.forEach(function (fieldName) {
+                const nodes = fieldMap.get(fieldName);
+                if (!nodes || !nodes.length) return;
+                nodes.forEach(function (node) {
+                    rows[sectionIndex].appendChild(node);
+                });
+                fieldMap.delete(fieldName);
+            });
+        });
+
+        fieldMap.forEach(function (nodes) {
+            nodes.forEach(function (node) {
+                rows[0].appendChild(node);
+            });
+        });
+        extras.forEach(function (node) {
+            rows[0].appendChild(node);
+        });
+
+        formGrid.replaceWith(accordion);
+
+        const formSections = Array.from(accordion.querySelectorAll(".edit-section"));
+        formSections.forEach(function (section) {
+            const toggle = section.querySelector(".edit-section-toggle");
+            const body = section.querySelector(".edit-section-body");
+            if (!toggle || !body) return;
+            toggle.addEventListener("click", function () {
+                formSections.forEach(function (current) {
+                    const currentToggle = current.querySelector(".edit-section-toggle");
+                    const currentBody = current.querySelector(".edit-section-body");
+                    const isTarget = current === section;
+                    current.classList.toggle("open", isTarget);
+                    if (currentBody) currentBody.hidden = !isTarget;
+                    if (currentToggle) currentToggle.setAttribute("aria-expanded", isTarget ? "true" : "false");
+                });
+            });
+        });
+
+        const panelTitles = {
+            "Edit Results": "5. Result Details",
+            "Edit Marks": "6. Marks Details",
+            "Edit Attendance": "7. Attendance Details"
+        };
+        const collapsedPanels = [];
+        document.querySelectorAll(".panel").forEach(function (panel) {
+            const head = panel.querySelector(":scope > .panel-head");
+            const body = panel.querySelector(":scope > .panel-body");
+            if (!head || !body) return;
+            const title = (head.textContent || "").trim();
+            if (!panelTitles[title]) return;
+
+            head.classList.add("collapsible-head");
+            head.innerHTML = "<span>" + panelTitles[title] + "</span><span class=\"panel-caret\">+</span>";
+            body.hidden = true;
+            collapsedPanels.push({ head: head, body: body });
+        });
+
+        if (collapsedPanels.length > 0) {
+            collapsedPanels[0].body.hidden = false;
+            collapsedPanels[0].head.classList.add("open");
+            collapsedPanels[0].head.setAttribute("aria-expanded", "true");
+        }
+
+        collapsedPanels.forEach(function (item) {
+            item.head.setAttribute("role", "button");
+            item.head.setAttribute("tabindex", "0");
+            item.head.addEventListener("click", function () {
+                collapsedPanels.forEach(function (current) {
+                    const isTarget = current === item;
+                    current.body.hidden = !isTarget;
+                    current.head.classList.toggle("open", isTarget);
+                    current.head.setAttribute("aria-expanded", isTarget ? "true" : "false");
+                });
+            });
+            item.head.addEventListener("keydown", function (event) {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    item.head.click();
+                }
+            });
+        });
+    })();
+</script>
+<script>
+    (function () {
+        const form = document.querySelector('form[action*="student_profile"]');
+        if (!form) return;
+
         const selects = Array.from(document.querySelectorAll("select.custom-dropdown"));
 
         function toggleOther(selectEl) {
@@ -739,5 +999,7 @@
         });
     })();
 </script>
+<script src="{{ url_for('static', filename='js/unified-effects.js') }}"></script>
 </body>
 </html>
+

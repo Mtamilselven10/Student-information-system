@@ -6,6 +6,7 @@
     <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/unified-theme.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root{
@@ -72,19 +73,82 @@
             font-weight:600;
         }
         .admin-shell{
-            display:grid;
-            grid-template-columns:290px 1fr;
-            gap:16px;
-            align-items:start;
+            position:relative;
+            display:block;
+        }
+        .menu-backdrop{
+            position:fixed;
+            inset:0;
+            background:rgba(6,20,44,.28);
+            opacity:0;
+            pointer-events:none;
+            transition:opacity .28s ease;
+            z-index:35;
+        }
+        .admin-shell.menu-open .menu-backdrop{
+            opacity:1;
+            pointer-events:auto;
+        }
+        .menu-toggle{
+            position:fixed;
+            left:20px;
+            top:96px;
+            width:52px;
+            height:52px;
+            border:none;
+            border-radius:14px;
+            background:linear-gradient(135deg,#0d2f63,#1f6feb);
+            box-shadow:0 10px 24px rgba(17,56,116,.34);
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            align-items:center;
+            gap:6px;
+            z-index:60;
+            transition:transform .28s ease, box-shadow .28s ease;
+        }
+        .menu-toggle:hover{
+            transform:translateY(-1px);
+            box-shadow:0 14px 26px rgba(17,56,116,.4);
+        }
+        .menu-toggle span{
+            width:24px;
+            height:2.5px;
+            border-radius:999px;
+            background:#fff;
+            transition:transform .28s ease, opacity .2s ease;
+        }
+        .admin-shell.menu-open .menu-toggle span:nth-child(1){
+            transform:translateY(8.5px) rotate(45deg);
+        }
+        .admin-shell.menu-open .menu-toggle span:nth-child(2){
+            opacity:0;
+        }
+        .admin-shell.menu-open .menu-toggle span:nth-child(3){
+            transform:translateY(-8.5px) rotate(-45deg);
         }
         .side-menu{
-            position:sticky;
-            top:16px;
+            position:fixed;
+            top:92px;
+            left:20px;
+            width:290px;
+            max-height:calc(100vh - 116px);
             background:var(--menu-bg);
             border:1px solid var(--line);
             border-radius:16px;
             box-shadow:0 12px 28px rgba(16,56,108,.08);
             overflow:hidden;
+            overflow-y:auto;
+            transform:translateX(-120%);
+            opacity:0;
+            pointer-events:none;
+            transition:transform .34s cubic-bezier(.2,.82,.23,.99), opacity .25s ease;
+            z-index:50;
+        }
+        .admin-shell.menu-open .side-menu{
+            transform:translateX(0);
+            opacity:1;
+            pointer-events:auto;
         }
         .side-head{
             padding:14px 14px 10px;
@@ -220,8 +284,15 @@
         .section-wrap.active{display:block;}
         @keyframes fadeUp{to{opacity:1;transform:translateY(0);}}
         @media (max-width:1100px){
-            .admin-shell{grid-template-columns:1fr;}
-            .side-menu{position:static;}
+            .menu-toggle{
+                top:88px;
+                left:14px;
+            }
+            .side-menu{
+                top:82px;
+                left:12px;
+                max-height:calc(100vh - 100px);
+            }
         }
         @media (max-width:992px){
             .dashboard-title{
@@ -263,18 +334,25 @@
         {% endwith %}
 
         <div class="admin-shell">
+            <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle admin menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="menu-backdrop" id="menuBackdrop"></div>
             <aside class="side-menu">
                 <div class="side-head">Admin Menu</div>
                 <div class="p-2">
                     <button type="button" class="menu-btn active" data-target="sec-users">
                         <span class="menu-logo l-users">U</span> User
                     </button>
+                    <a href="{{ url_for('admin_staff') }}" class="menu-btn">
+                        <span class="menu-logo l-action">R</span> Request
+                    </a>
                     <button type="button" class="menu-btn" id="adminActionBtn" data-target="sec-actions">
                         <span class="menu-logo l-action">A</span> Admin Action
                     </button>
                     <div class="sub-menu" id="adminActionSub">
                         <a href="{{ url_for('admin_students') }}" class="sub-link">Manage Students</a>
-                        <a href="{{ url_for('admin_staff') }}" class="sub-link">Manage Staff</a>
+                        <a href="{{ url_for('admin_staff') }}" class="sub-link">Request</a>
                     </div>
                     <button type="button" class="menu-btn" data-target="sec-add-admin">
                         <span class="menu-logo l-add">+</span> Add Admin
@@ -310,7 +388,7 @@
                         <h6>Admin Action</h6>
                         <div class="d-flex gap-2 flex-wrap">
                             <a href="{{ url_for('admin_students') }}" class="btn btn-primary btn-sm">Manage Students</a>
-                            <a href="{{ url_for('admin_staff') }}" class="btn btn-success btn-sm">Manage Staff</a>
+                            <a href="{{ url_for('admin_staff') }}" class="btn btn-success btn-sm">Request</a>
                         </div>
                     </div>
                 </div>
@@ -390,14 +468,37 @@
     </main>
     <script>
         (function () {
+            const adminShell = document.querySelector(".admin-shell");
             const menuBtns = Array.from(document.querySelectorAll(".menu-btn[data-target]"));
             const sections = Array.from(document.querySelectorAll(".section-wrap"));
             const actionBtn = document.getElementById("adminActionBtn");
             const actionSub = document.getElementById("adminActionSub");
+            const menuToggle = document.getElementById("menuToggle");
+            const menuBackdrop = document.getElementById("menuBackdrop");
+
+            function setMenu(open) {
+                if (!adminShell || !menuToggle) {
+                    return;
+                }
+                adminShell.classList.toggle("menu-open", open);
+                menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
+            }
 
             function openSection(id) {
                 sections.forEach((s) => s.classList.toggle("active", s.id === id));
                 menuBtns.forEach((b) => b.classList.toggle("active", b.dataset.target === id));
+            }
+
+            if (menuToggle) {
+                menuToggle.addEventListener("click", function () {
+                    setMenu(!adminShell.classList.contains("menu-open"));
+                });
+            }
+
+            if (menuBackdrop) {
+                menuBackdrop.addEventListener("click", function () {
+                    setMenu(false);
+                });
             }
 
             menuBtns.forEach((btn) => {
@@ -406,10 +507,21 @@
                         actionSub.classList.toggle("open");
                     }
                     openSection(this.dataset.target);
+                    if (window.matchMedia("(max-width: 1100px)").matches) {
+                        setMenu(false);
+                    }
                 });
+            });
+
+            document.addEventListener("keydown", function (event) {
+                if (event.key === "Escape") {
+                    setMenu(false);
+                }
             });
         })();
     </script>
+<script src="{{ url_for('static', filename='js/unified-effects.js') }}"></script>
 </body>
 </html>
+
 

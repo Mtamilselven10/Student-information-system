@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Staff</title>
+    <title>Admin Requests</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/unified-theme.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root{
@@ -39,7 +40,7 @@
 <body>
 <nav class="navbar topbar navbar-dark">
     <div class="container">
-        <span class="navbar-brand">Admin - Staff</span>
+        <span class="navbar-brand">Admin - Requests</span>
         <div class="d-flex gap-2">
             <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light btn-sm">Dashboard</a>
             <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
@@ -50,11 +51,17 @@
 <main class="container py-4">
     <div class="panel p-3">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-            <h5 class="mb-0">Staff Management</h5>
+            <h5 class="mb-0">Staff Requests</h5>
             <form method="GET" action="{{ url_for('admin_staff') }}" class="d-flex gap-2">
                 <input type="text" name="email" class="form-control form-control-sm" placeholder="Search Email" value="{{ email_query or '' }}">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="" {% if not status_query %}selected{% endif %}>All Status</option>
+                    <option value="Pending" {% if status_query == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Approved" {% if status_query == 'Approved' %}selected{% endif %}>Approved</option>
+                    <option value="Rejected" {% if status_query == 'Rejected' %}selected{% endif %}>Rejected</option>
+                </select>
                 <button type="submit" class="btn btn-primary btn-sm">Search</button>
-                {% if email_query %}
+                {% if email_query or status_query %}
                 <a href="{{ url_for('admin_staff') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
                 {% endif %}
             </form>
@@ -62,7 +69,7 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
-                    <tr><th>#</th><th>Staff ID</th><th>Email</th><th>Department</th><th>Designation</th><th>Contact</th><th>Action</th></tr>
+                    <tr><th>#</th><th>Staff ID</th><th>Email</th><th>Department</th><th>Designation</th><th>Contact</th><th>Status</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                     {% for s in staff_members %}
@@ -74,7 +81,27 @@
                         <td>{{ s.designation or '-' }}</td>
                         <td>{{ s.contact or '-' }}</td>
                         <td>
+                            {% set status = s.approval_status or 'Approved' %}
+                            {% if status == 'Approved' %}
+                                <span class="badge text-bg-success">Approved</span>
+                            {% elif status == 'Rejected' %}
+                                <span class="badge text-bg-danger">Rejected</span>
+                            {% else %}
+                                <span class="badge text-bg-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if s.user %}
+                            {% if (s.approval_status or 'Approved') != 'Approved' %}
+                            <form method="POST" action="{{ url_for('admin_approve_staff', staff_id=s.id) }}" class="d-inline me-1">
+                                <button type="submit" class="btn btn-outline-success btn-sm">Approve</button>
+                            </form>
+                            {% endif %}
+                            {% if (s.approval_status or 'Approved') != 'Rejected' %}
+                            <form method="POST" action="{{ url_for('admin_reject_staff', staff_id=s.id) }}" class="d-inline me-1">
+                                <button type="submit" class="btn btn-outline-warning btn-sm">Reject</button>
+                            </form>
+                            {% endif %}
                             <form method="POST" action="{{ url_for('delete_user', user_id=s.user.user_id) }}" class="d-inline">
                                 <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this staff user?')">Delete User</button>
                             </form>
@@ -84,12 +111,14 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7" class="text-center text-muted">No staff records found</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted">No staff records found</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </main>
+<script src="{{ url_for('static', filename='js/unified-effects.js') }}"></script>
 </body>
 </html>
+

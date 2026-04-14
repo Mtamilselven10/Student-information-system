@@ -133,6 +133,7 @@ class StaffProfile(db.Model):
     subjects = db.Column(db.String(200))
     contact = db.Column(db.String(20))
     photo = db.Column(db.String(200))
+    approval_status = db.Column(db.String(20), default="Pending")
 
 
 # ---------------- MARKS ----------------

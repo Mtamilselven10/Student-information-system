@@ -1,6 +1,8 @@
 import os
 import uuid
+import random
 from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
+from flask_mail import Mail, Message
 from controller.database import db
 from controller.config import Config
 from controller.models import (
@@ -15,8 +17,28 @@ from sqlalchemy import text
 app = Flask(__name__)
 app.config.from_object(Config)
 app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
+app.config.setdefault("MAIL_SERVER", "smtp.gmail.com")
+app.config.setdefault("MAIL_PORT", 587)
+app.config.setdefault("MAIL_USE_TLS", True)
+app.config.setdefault("MAIL_USE_SSL", False)
+mail_username = (
+    os.getenv("MAIL_USERNAME")
+    or os.getenv("GMAIL_USER")
+    or os.getenv("EMAIL_USER")
+    or ""
+)
+mail_password = (
+    os.getenv("MAIL_PASSWORD")
+    or os.getenv("GMAIL_APP_PASSWORD")
+    or os.getenv("EMAIL_PASSWORD")
+    or ""
+)
+app.config.setdefault("MAIL_USERNAME", mail_username)
+app.config.setdefault("MAIL_PASSWORD", mail_password)
+app.config.setdefault("MAIL_DEFAULT_SENDER", os.getenv("MAIL_DEFAULT_SENDER", mail_username))
 
 db.init_app(app)
+mail = Mail(app)
 
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 ALLOWED_ATTACHMENT_EXTENSIONS = {
@@ -24,6 +46,29 @@ ALLOWED_ATTACHMENT_EXTENSIONS = {
     "pdf", "doc", "docx", "xls", "xlsx",
     "ppt", "pptx", "txt", "zip", "rar"
 }
+
+
+def generate_otp():
+    return f"{random.randint(100000, 999999)}"
+
+
+def send_otp_email(recipient_email, otp):
+    username = app.config.get("MAIL_USERNAME", "").strip()
+    password = app.config.get("MAIL_PASSWORD", "").strip()
+    if not username or not password:
+        raise ValueError("Gmail SMTP is not configured. Set MAIL_USERNAME and MAIL_PASSWORD (Gmail App Password).")
+
+    sender_email = (
+        app.config.get("MAIL_DEFAULT_SENDER")
+        or app.config.get("MAIL_USERNAME")
+    )
+    message = Message(
+        subject="Your OTP for Registration",
+        recipients=[recipient_email],
+        sender=sender_email,
+        body=f"Your OTP is {otp}. Please enter this OTP to complete your registration."
+    )
+    mail.send(message)
 
 
 def allowed_image_file(filename):
@@ -172,6 +217,184 @@ def _student_pdf_file_path(student):
     return os.path.join(pdf_dir, f"student_{student.user_id}_total_details.pdf")
 
 
+def _student_export_payload(student):
+    attachments = (
+        StudentAttachment.query
+        .filter_by(student_id=student.id)
+        .order_by(StudentAttachment.id.desc())
+        .all()
+    )
+
+    name = student.user.username if getattr(student, "user", None) else (session.get("username") or "-")
+    scholarship_text = (
+        getattr(student, "scholarship_category", None)
+        or getattr(student, "scholarship_details", None)
+        or "-"
+    )
+
+    lines = [
+        "STUDENT PROFILE",
+        "",
+        f"Name: {name}",
+        f"Register Number: {student.register_number or '-'}",
+        f"Batch: {student.batch or '-'}",
+        f"Course: {student.course or '-'}",
+        f"Branch: {student.branch or '-'}",
+        f"Gender: {student.gender or '-'}",
+        f"Date of Birth: {student.dob or '-'}",
+        f"Blood Group: {student.blood_group or '-'}",
+        f"Nationality: {student.nationality or '-'}",
+        f"Hostel: {student.hostel or '-'}",
+        f"Bus: {student.bus or '-'}",
+        f"Admission Quota: {student.admission_quota or '-'}",
+        f"First Graduate: {student.first_graduate or '-'}",
+        f"Personal Email: {student.personal_email or '-'}",
+        f"College Email: {student.college_email or '-'}",
+        f"Email ID: {student.email_id or '-'}",
+        f"Mobile Number (Student): {student.mobile or '-'}",
+        f"Address: {student.address or '-'}",
+        "",
+        "FAMILY DETAILS",
+        f"Father Name: {student.father_name or '-'}",
+        f"Mother Name: {student.mother_name or '-'}",
+        f"Parent Occupation: {student.parent_occupation or '-'}",
+        f"Mobile Number (Parent): {student.parent_mobile or '-'}",
+        "",
+        "ACADEMIC INFORMATION",
+        f"Semester: {student.semester or '-'}",
+        f"Admission Year: {student.admission_year or '-'}",
+        f"Previous School / College: {student.previous_institution or '-'}",
+        f"Internal Marks: {student.internal_marks or '-'}",
+        f"Semester Exam Marks: {student.semester_exam_marks or '-'}",
+        f"CGPA / GPA: {student.cgpa_gpa or '-'}",
+        f"Arrears / Backlogs: {student.arrears_backlogs or '-'}",
+        "",
+        "FEE & SCHOLARSHIP DETAILS",
+        f"Tuition Fee: {student.tuition_fee or '-'}",
+        f"Bus Fee / Hostel Fee: {student.bus_hostel_fee or '-'}",
+        f"Scholarship Details: {scholarship_text}",
+        f"Scholarship Amount: {student.scholarship_amount or '-'}",
+        "",
+        "HOSTEL DETAILS",
+        f"Hostel Name: {student.hostel_name or '-'}",
+        f"Room Number: {student.room_number or '-'}",
+        f"Roommates Count: {student.roommates_count or '-'}",
+        f"Warden Name: {student.warden_name or '-'}",
+        f"Warden Mobile Number: {student.warden_mobile or '-'}",
+        "",
+        "EXTRA-CURRICULAR ACTIVITIES",
+        f"Sports Participation: {student.sports_participation or '-'}",
+        f"Club Memberships: {student.club_memberships or '-'}",
+        f"Achievements / Awards: {student.achievements_awards or '-'}",
+        f"Events Participated: {student.events_participated or '-'}",
+        "",
+        "PROFESSIONAL / CAREER DETAILS",
+        f"Projects Done: {student.projects_done or '-'}",
+        f"Internships: {student.internships or '-'}",
+        f"Certifications: {student.certifications or '-'}",
+        f"Skills: {student.skills or '-'}",
+        f"Project Details: {student.project_details or '-'}",
+        "",
+        "DISCIPLINARY RECORDS",
+        f"Warnings: {student.warnings or '-'}",
+        f"Complaints: {student.complaints or '-'}",
+        f"Actions Taken: {student.actions_taken or '-'}",
+        "",
+        "RESULT DETAILS",
+    ]
+
+    if student.results:
+        for idx, item in enumerate(student.results, start=1):
+            lines.append(
+                f"{idx}. Sem {item.semester or '-'} | {item.subject_code or '-'} | {item.subject_name or '-'} | {item.grade or '-'} | {item.result_status or '-'} | {item.month_year or '-'}"
+            )
+    else:
+        lines.append("No result details available")
+
+    lines.extend(["", "MARKS"])
+    if student.marks:
+        for idx, item in enumerate(student.marks, start=1):
+            lines.append(f"{idx}. {item.subject or '-'} - {item.marks if item.marks is not None else '-'}")
+    else:
+        lines.append("No marks available")
+
+    lines.extend(["", "ATTENDANCE"])
+    if student.attendance:
+        for idx, item in enumerate(student.attendance, start=1):
+            lines.append(f"{idx}. {item.subject or '-'} - {item.attendance_percentage if item.attendance_percentage is not None else '-'}%")
+    else:
+        lines.append("No attendance available")
+
+    lines.extend(["", "ATTACHMENTS"])
+    if attachments:
+        for idx, item in enumerate(attachments, start=1):
+            lines.append(f"{idx}. {item.file_name} ({item.file_path})")
+    else:
+        lines.append("No attachments uploaded")
+
+    rows = [
+        ("Basic Profile Details", "Name", name),
+        ("Basic Profile Details", "Register Number", student.register_number or "-"),
+        ("Basic Profile Details", "Batch", student.batch or "-"),
+        ("Basic Profile Details", "Course", student.course or "-"),
+        ("Basic Profile Details", "Branch", student.branch or "-"),
+        ("Basic Profile Details", "Gender", student.gender or "-"),
+        ("Basic Profile Details", "Date of Birth", student.dob or "-"),
+        ("Basic Profile Details", "Blood Group", student.blood_group or "-"),
+        ("Basic Profile Details", "Nationality", student.nationality or "-"),
+        ("Contact Information", "Personal Email", student.personal_email or "-"),
+        ("Contact Information", "College Email", student.college_email or "-"),
+        ("Contact Information", "Mobile", student.mobile or "-"),
+        ("Contact Information", "Address", student.address or "-"),
+        ("Family Details", "Father Name", student.father_name or "-"),
+        ("Family Details", "Mother Name", student.mother_name or "-"),
+        ("Family Details", "Parent Occupation", student.parent_occupation or "-"),
+        ("Family Details", "Parent Mobile Number", student.parent_mobile or "-"),
+        ("Family Details", "Parent Email", student.email_id or "-"),
+        ("Academic Information", "Semester", student.semester or "-"),
+        ("Academic Information", "Admission Year", student.admission_year or "-"),
+        ("Academic Information", "Previous School / College", student.previous_institution or "-"),
+        ("Academic Information", "Internal Marks", student.internal_marks or "-"),
+        ("Academic Information", "Semester Exam Marks", student.semester_exam_marks or "-"),
+        ("Academic Information", "CGPA / GPA", student.cgpa_gpa or "-"),
+        ("Academic Information", "Arrears / Backlogs", student.arrears_backlogs or "-"),
+        ("Hostel & Transport", "Hostel", student.hostel or "-"),
+        ("Hostel & Transport", "Hostel Name", student.hostel_name or "-"),
+        ("Hostel & Transport", "Room Number", student.room_number or "-"),
+        ("Hostel & Transport", "Roommates Count", student.roommates_count or "-"),
+        ("Hostel & Transport", "Warden Name", student.warden_name or "-"),
+        ("Hostel & Transport", "Warden Mobile", student.warden_mobile or "-"),
+        ("Hostel & Transport", "Bus", student.bus or "-"),
+        ("Fees & Scholarship", "Tuition Fee", student.tuition_fee or "-"),
+        ("Fees & Scholarship", "Bus / Hostel Fee", student.bus_hostel_fee or "-"),
+        ("Fees & Scholarship", "Scholarship Details", scholarship_text),
+        ("Fees & Scholarship", "Scholarship Amount", student.scholarship_amount or "-"),
+        ("Professional Details", "Projects Done", student.projects_done or "-"),
+        ("Professional Details", "Internships", student.internships or "-"),
+        ("Professional Details", "Certifications", student.certifications or "-"),
+        ("Professional Details", "Skills", student.skills or "-"),
+        ("Professional Details", "Project Details", student.project_details or "-"),
+        ("Disciplinary Record", "Warnings", student.warnings or "-"),
+        ("Disciplinary Record", "Complaints", student.complaints or "-"),
+        ("Disciplinary Record", "Actions Taken", student.actions_taken or "-"),
+    ]
+
+    if student.results:
+        for item in student.results:
+            rows.append(("Result Details", f"{item.subject_code or '-'} - {item.subject_name or '-'}", f"Sem {item.semester or '-'} | Grade {item.grade or '-'} | {item.result_status or '-'} | {item.month_year or '-'}"))
+    if student.marks:
+        for item in student.marks:
+            rows.append(("Marks Details", item.subject or "-", item.marks if item.marks is not None else "-"))
+    if student.attendance:
+        for item in student.attendance:
+            rows.append(("Attendance Details", item.subject or "-", f"{item.attendance_percentage if item.attendance_percentage is not None else '-'}%"))
+    if attachments:
+        for item in attachments:
+            rows.append(("Attachments", item.file_name or "-", item.file_path or "-"))
+
+    return lines, rows
+
+
 # ---------------- CREATE TABLES ----------------
 
 with app.app_context():
@@ -180,6 +403,10 @@ with app.app_context():
     staff_columns = [row[1] for row in db.session.execute(text("PRAGMA table_info(staff_profile)")).all()]
     if "photo" not in staff_columns:
         db.session.execute(text("ALTER TABLE staff_profile ADD COLUMN photo VARCHAR(200)"))
+        db.session.commit()
+    if "approval_status" not in staff_columns:
+        db.session.execute(text("ALTER TABLE staff_profile ADD COLUMN approval_status VARCHAR(20)"))
+        db.session.execute(text("UPDATE staff_profile SET approval_status = 'Approved' WHERE approval_status IS NULL OR approval_status = ''"))
         db.session.commit()
     student_columns = {row[1] for row in db.session.execute(text("PRAGMA table_info(student_profile)")).all()}
     student_extra_columns = {
@@ -285,49 +512,105 @@ def index():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form.get("username")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        role_name = request.form.get("role")
+        username = (request.form.get("username") or "").strip()
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
+        role_name = (request.form.get("role") or "").strip()
         allowed_roles = {"Student", "Staff"}
 
         if role_name not in allowed_roles:
             flash("Admin account can be created only by system")
             return redirect(url_for("register"))
 
-        hashed_password = generate_password_hash(password)
+        if not username or not email or not password:
+            flash("All fields are required")
+            return redirect(url_for("register"))
+
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash("Email already registered")
+            return redirect(url_for("register"))
 
         try:
-            new_user = User(username=username, email=email, password=hashed_password)
-            db.session.add(new_user)
-            db.session.flush()  # Get user_id
+            otp = generate_otp()
+            send_otp_email(email, otp)
 
+            session["pending_user"] = {
+                "username": username,
+                "email": email,
+                "password": generate_password_hash(password),
+                "role": role_name
+            }
+            session["registration_otp"] = otp
+            flash("OTP sent to your email")
+            return redirect(url_for("verify_otp"))
+
+        except Exception as e:
+            error_text = str(e)
+            if "Authentication Required" in error_text:
+                flash("Gmail authentication failed. Use your Gmail address in MAIL_USERNAME and 16-digit App Password in MAIL_PASSWORD.")
+            else:
+                flash(error_text)
+            return redirect(url_for("register"))
+
+    return render_template("register.html")
+
+
+@app.route("/verify_otp", methods=["GET", "POST"])
+def verify_otp():
+    pending_user = session.get("pending_user")
+    pending_otp = session.get("registration_otp")
+
+    if not pending_user or not pending_otp:
+        flash("Please register first")
+        return redirect(url_for("register"))
+
+    if request.method == "POST":
+        entered_otp = (request.form.get("otp") or "").strip()
+        if entered_otp != str(pending_otp):
+            flash("Invalid OTP")
+            return render_template("verify_otp.html")
+
+        try:
+            role_name = pending_user.get("role")
             role = Role.query.filter_by(name=role_name).first()
-
             if not role:
                 flash("Role not found")
-                db.session.rollback()
                 return redirect(url_for("register"))
 
-            user_role = UserRole(user_id=new_user.user_id, role_id=role.role_id)
-            db.session.add(user_role)
+            existing_user = User.query.filter_by(email=pending_user.get("email")).first()
+            if existing_user:
+                flash("Email already registered")
+                session.pop("pending_user", None)
+                session.pop("registration_otp", None)
+                return redirect(url_for("login"))
 
-            # Create profiles based on role
+            new_user = User(
+                username=pending_user.get("username"),
+                email=pending_user.get("email"),
+                password=pending_user.get("password")
+            )
+            db.session.add(new_user)
+            db.session.flush()
+
+            db.session.add(UserRole(user_id=new_user.user_id, role_id=role.role_id))
+
             if role_name == "Student":
                 db.session.add(StudentProfile(user_id=new_user.user_id))
-
             elif role_name == "Staff":
-                db.session.add(StaffProfile(user_id=new_user.user_id))
+                db.session.add(StaffProfile(user_id=new_user.user_id, approval_status="Pending"))
 
             db.session.commit()
+            session.pop("pending_user", None)
+            session.pop("registration_otp", None)
             flash("Registration Successful!")
             return redirect(url_for("login"))
-
         except Exception as e:
             db.session.rollback()
             flash(str(e))
+            return render_template("verify_otp.html")
 
-    return render_template("register.html")
+    return render_template("verify_otp.html")
 
 
 # ================= LOGIN =================
@@ -356,6 +639,11 @@ def login():
                     session["role"] = "Admin"
                     return redirect(url_for("index"))
                 if "Staff" in role_names:
+                    staff_profile = StaffProfile.query.filter_by(user_id=user.user_id).first()
+                    status = (staff_profile.approval_status if staff_profile and staff_profile.approval_status else "Approved")
+                    if status != "Approved":
+                        flash("Admin approval pending for staff account")
+                        return render_template("login.html", show_forgot=False)
                     session["role"] = "Staff"
                     return redirect(url_for("index"))
                 if "Student" in role_names:
@@ -449,113 +737,7 @@ def student_download_profile_pdf():
         return redirect(url_for("login"))
 
     student = get_current_student(session.get("user_id"))
-    attachments = (
-        StudentAttachment.query
-        .filter_by(student_id=student.id)
-        .order_by(StudentAttachment.id.desc())
-        .all()
-    )
-
-    name = student.user.username if getattr(student, "user", None) else (session.get("username") or "-")
-    lines = [
-        "STUDENT PROFILE",
-        "",
-        f"Name: {name}",
-        f"Register Number: {student.register_number or '-'}",
-        f"Batch: {student.batch or '-'}",
-        f"Course: {student.course or '-'}",
-        f"Branch: {student.branch or '-'}",
-        f"Gender: {student.gender or '-'}",
-        f"Date of Birth: {student.dob or '-'}",
-        f"Blood Group: {student.blood_group or '-'}",
-        f"Nationality: {student.nationality or '-'}",
-        f"Hostel: {student.hostel or '-'}",
-        f"Bus: {student.bus or '-'}",
-        f"Admission Quota: {student.admission_quota or '-'}",
-        f"First Graduate: {student.first_graduate or '-'}",
-        f"Personal Email: {student.personal_email or '-'}",
-        f"College Email: {student.college_email or '-'}",
-        f"Email ID: {student.email_id or '-'}",
-        f"Mobile Number (Student): {student.mobile or '-'}",
-        f"Address: {student.address or '-'}",
-        "",
-        "FAMILY DETAILS",
-        f"Father Name: {student.father_name or '-'}",
-        f"Mother Name: {student.mother_name or '-'}",
-        f"Parent Occupation: {student.parent_occupation or '-'}",
-        f"Mobile Number (Parent): {student.parent_mobile or '-'}",
-        "",
-        "ACADEMIC INFORMATION",
-        f"Semester: {student.semester or '-'}",
-        f"Admission Year: {student.admission_year or '-'}",
-        f"Previous School / College: {student.previous_institution or '-'}",
-        f"Internal Marks: {student.internal_marks or '-'}",
-        f"Semester Exam Marks: {student.semester_exam_marks or '-'}",
-        f"CGPA / GPA: {student.cgpa_gpa or '-'}",
-        f"Arrears / Backlogs: {student.arrears_backlogs or '-'}",
-        "",
-        "FEE & SCHOLARSHIP DETAILS",
-        f"Tuition Fee: {student.tuition_fee or '-'}",
-        f"Bus Fee / Hostel Fee: {student.bus_hostel_fee or '-'}",
-        f"Scholarship Details: {getattr(student, 'scholarship_category', None) or '-'}",
-        f"Scholarship Amount: {student.scholarship_amount or '-'}",
-        "",
-        "HOSTEL DETAILS",
-        f"Hostel Name: {student.hostel_name or '-'}",
-        f"Room Number: {student.room_number or '-'}",
-        f"Roommates Count: {student.roommates_count or '-'}",
-        f"Warden Name: {student.warden_name or '-'}",
-        f"Warden Mobile Number: {student.warden_mobile or '-'}",
-        "",
-        "EXTRA-CURRICULAR ACTIVITIES",
-        f"Sports Participation: {student.sports_participation or '-'}",
-        f"Club Memberships: {student.club_memberships or '-'}",
-        f"Achievements / Awards: {student.achievements_awards or '-'}",
-        f"Events Participated: {student.events_participated or '-'}",
-        "",
-        "PROFESSIONAL / CAREER DETAILS",
-        f"Projects Done: {student.projects_done or '-'}",
-        f"Internships: {student.internships or '-'}",
-        f"Certifications: {student.certifications or '-'}",
-        f"Skills: {student.skills or '-'}",
-        f"Project Details: {student.project_details or '-'}",
-        "",
-        "DISCIPLINARY RECORDS",
-        f"Warnings: {student.warnings or '-'}",
-        f"Complaints: {student.complaints or '-'}",
-        f"Actions Taken: {student.actions_taken or '-'}",
-        "",
-        "RESULT DETAILS",
-    ]
-
-    if student.results:
-        for idx, item in enumerate(student.results, start=1):
-            lines.extend([
-                f"{idx}. Sem {item.semester or '-'} | {item.subject_code or '-'} | {item.subject_name or '-'} | {item.grade or '-'} | {item.result_status or '-'} | {item.month_year or '-'}"
-            ])
-    else:
-        lines.append("No result details available")
-
-    lines.extend(["", "MARKS"])
-    if student.marks:
-        for idx, item in enumerate(student.marks, start=1):
-            lines.append(f"{idx}. {item.subject or '-'} - {item.marks if item.marks is not None else '-'}")
-    else:
-        lines.append("No marks available")
-
-    lines.extend(["", "ATTENDANCE"])
-    if student.attendance:
-        for idx, item in enumerate(student.attendance, start=1):
-            lines.append(f"{idx}. {item.subject or '-'} - {item.attendance_percentage if item.attendance_percentage is not None else '-'}%")
-    else:
-        lines.append("No attendance available")
-
-    lines.extend(["", "ATTACHMENTS"])
-    if attachments:
-        for idx, item in enumerate(attachments, start=1):
-            lines.append(f"{idx}. {item.file_name} ({item.file_path})")
-    else:
-        lines.append("No attachments uploaded")
+    lines, _ = _student_export_payload(student)
 
     pdf_bytes = _build_simple_pdf("Student Total Details", lines)
     saved_pdf_path = _student_pdf_file_path(student)
@@ -567,6 +749,45 @@ def student_download_profile_pdf():
         pdf_bytes,
         mimetype="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+@app.route("/student_download_profile_excel")
+def student_download_profile_excel():
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
+
+    student = get_current_student(session.get("user_id"))
+    _, rows = _student_export_payload(student)
+
+    def _clean_cell(value):
+        return str(value).replace("\t", " ").replace("\r", " ").replace("\n", " ").strip()
+
+    tsv_lines = ["Section\tField\tValue"]
+    for section, field, value in rows:
+        tsv_lines.append(f"{_clean_cell(section)}\t{_clean_cell(field)}\t{_clean_cell(value)}")
+    content = "\n".join(tsv_lines)
+
+    return Response(
+        content,
+        mimetype="application/vnd.ms-excel",
+        headers={"Content-Disposition": f'attachment; filename="student_{student.user_id}_total_details.xls"'}
+    )
+
+
+@app.route("/student_download_profile_word")
+def student_download_profile_word():
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
+
+    student = get_current_student(session.get("user_id"))
+    lines, _ = _student_export_payload(student)
+    doc_content = "\r\n".join(lines)
+
+    return Response(
+        doc_content.encode("utf-8"),
+        mimetype="application/msword",
+        headers={"Content-Disposition": f'attachment; filename="student_{student.user_id}_total_details.doc"'}
     )
 
 
@@ -1320,11 +1541,51 @@ def admin_staff():
         return redirect(url_for("login"))
 
     email_query = (request.args.get("email") or "").strip()
+    status_query = (request.args.get("status") or "").strip()
     staff_query = db.session.query(StaffProfile).join(User, User.user_id == StaffProfile.user_id)
     if email_query:
         staff_query = staff_query.filter(User.email.ilike(f"%{email_query}%"))
+    if status_query in {"Pending", "Approved", "Rejected"}:
+        staff_query = staff_query.filter(StaffProfile.approval_status == status_query)
     staff_members = staff_query.order_by(StaffProfile.id.desc()).all()
-    return render_template("admin_staff.html", staff_members=staff_members, email_query=email_query)
+    return render_template(
+        "admin_staff.html",
+        staff_members=staff_members,
+        email_query=email_query,
+        status_query=status_query
+    )
+
+
+@app.route("/admin/approve_staff/<int:staff_id>", methods=["POST"])
+def admin_approve_staff(staff_id):
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    staff_profile = StaffProfile.query.get(staff_id)
+    if not staff_profile:
+        flash("Staff record not found")
+        return redirect(url_for("admin_staff"))
+
+    staff_profile.approval_status = "Approved"
+    db.session.commit()
+    flash("Staff request approved")
+    return redirect(url_for("admin_staff"))
+
+
+@app.route("/admin/reject_staff/<int:staff_id>", methods=["POST"])
+def admin_reject_staff(staff_id):
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    staff_profile = StaffProfile.query.get(staff_id)
+    if not staff_profile:
+        flash("Staff record not found")
+        return redirect(url_for("admin_staff"))
+
+    staff_profile.approval_status = "Rejected"
+    db.session.commit()
+    flash("Staff request rejected")
+    return redirect(url_for("admin_staff"))
 
 
 # ================= DELETE USER =================

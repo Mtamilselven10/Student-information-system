@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/layout-fix.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/unified-theme.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 
     <style>
@@ -13,7 +14,7 @@
             margin: 0;
             font-family: 'Poppins', sans-serif;
             height: 100vh;
-            background: linear-gradient(-45deg, #852aa7, #c5d6f3, #71a5fe, #cbeff5);
+            background: linear-gradient(-45deg, #06141b, #ccd0cf, #9ba8ab, #4a5c6a);
             background-size: 400% 400%;
             animation: gradientMove 10s ease infinite;
             display: flex;
@@ -34,12 +35,12 @@
             animation: orbFloat 8s ease-in-out infinite;
         }
         body::before {
-            background: #bb8cff;
+            background: #b5b1ba;
             top: -85px;
             left: -70px;
         }
         body::after {
-            background: #8ee7ff;
+            background: #bac0c1;
             bottom: -95px;
             right: -80px;
             animation-delay: 1.2s;
@@ -90,7 +91,7 @@
         }
 
         .btn-custom {
-            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            background: linear-gradient(45deg, #c2cad0, #818c8d);
             border: none;
             color: white;
             font-weight: 500;
@@ -101,7 +102,7 @@
 
         .btn-custom:hover {
             transform: scale(1.03);
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #f4c37f, #db8a76);
         }
         .btn-custom.loading {
             position: relative;
@@ -236,5 +237,7 @@
     });
 </script>
 
+<script src="{{ url_for('static', filename='js/unified-effects.js') }}"></script>
 </body>
 </html>
+
